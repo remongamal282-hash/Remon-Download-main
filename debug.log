@@ -1,0 +1,46 @@
+
+> remon-download@0.1.0 electron:dev
+> concurrently -k "npm run dev:vite" "npm run dev:electron" -n "VITE,ELECTRON" -c "blue,green"
+
+[VITE] 
+[VITE] > remon-download@0.1.0 dev:vite
+[VITE] > powershell -NoProfile -ExecutionPolicy Bypass -Command "$port = 5173; $connections = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue; if ($connections) { foreach ($connection in $connections) { try { Stop-Process -Id $connection.OwningProcess -Force -ErrorAction Stop } catch {} } }; vite --port 5173"
+[VITE] 
+[ELECTRON] 
+[ELECTRON] > remon-download@0.1.0 dev:electron
+[ELECTRON] > powershell -NoProfile -ExecutionPolicy Bypass -Command "$port = 5173; $connections = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue; if ($connections) { foreach ($connection in $connections) { try { Stop-Process -Id $connection.OwningProcess -Force -ErrorAction Stop } catch {} } }; wait-on http://localhost:5173; npm run electron:build; cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron ."
+[ELECTRON] 
+[VITE] 
+[VITE]   [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m1135[22m[2m[0m ms[22m
+[VITE] 
+[VITE]   [32mΓ₧£[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[VITE] [2m  [32mΓ₧£[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[ELECTRON] 
+[ELECTRON] > remon-download@0.1.0 electron:build
+[ELECTRON] > esbuild electron/main.ts electron/preload.ts --bundle --platform=node --format=cjs --external:electron --outdir=dist-electron/electron --sourcemap --out-extension:.js=.cjs
+[ELECTRON] 
+[ELECTRON] Γû▓ [WARNING] Duplicate member "emitProgress" in class body [duplicate-class-member]
+[ELECTRON] 
+[ELECTRON]     electron/services/nativeDownloadService.ts:416:10:
+[ELECTRON]       416 Γöé   private emitProgress(id: string, progress: YtdlpProgress): void {
+[ELECTRON]           Γò╡           ~~~~~~~~~~~~
+[ELECTRON] 
+[ELECTRON]   The original member "emitProgress" is here:
+[ELECTRON] 
+[ELECTRON]     electron/services/nativeDownloadService.ts:320:10:
+[ELECTRON]       320 Γöé   private emitProgress(id: string, progress: YtdlpProgress): void {
+[ELECTRON]           Γò╡           ~~~~~~~~~~~~
+[ELECTRON] 
+[ELECTRON] 1 warning
+[ELECTRON] 
+[ELECTRON]   dist-electron\electron\main.cjs          77.0kb
+[ELECTRON]   dist-electron\electron\preload.cjs        4.4kb
+[ELECTRON]   dist-electron\electron\main.cjs.map     164.7kb
+[ELECTRON]   dist-electron\electron\preload.cjs.map   14.4kb
+[ELECTRON] 
+[ELECTRON] Done in 29ms
+[ELECTRON] 
+[ELECTRON] [IPC] NativeSettingsService initialized
+[ELECTRON] [IPC] NativeHistoryService initialized
+[ELECTRON] [IPC] NativeFavoritesService initialized
+[ELECTRON] [IPC] NativeSchedulerService initialized

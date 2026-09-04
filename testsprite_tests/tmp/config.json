@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "Remon-Download",
+    "projectPath": "d:\\Remon-Download",
+    "testIds": [],
+    "additionalInstruction": "The app uses HashRouter. Navigate with hash URLs such as http://localhost:5173/#/ and http://localhost:5173/#/queue. There is no login. Wait for the sidebar and page heading to appear before interacting. In Vite browser mode Electron APIs may be missing; do not fail solely because native downloads or folder picker are unavailable. For URL analysis use https://www.youtube.com/watch?v=dQw4w9WgXcQ.",
+    "serverMode": "development",
+    "envs": {},
+    "envsFile": "C:\\Users\\remon\\.testsprite\\mcp\\session-c20bdea874fe755f.json"
+  },
+  "serverPort": 51013
+}

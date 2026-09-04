@@ -1,0 +1,867 @@
+[
+  {
+    "id": "TC001",
+    "title": "Pause and resume an active download",
+    "description": "This verifies that a user can pause an active download and then resume it from the queue page.",
+    "category": "Download Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/queue"
+      },
+      {
+        "type": "action",
+        "description": "Pause an active download"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the download is paused"
+      },
+      {
+        "type": "action",
+        "description": "Resume the paused download"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the download is active again"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Analyze a valid video URL and add it to the queue",
+    "description": "This verifies that a user can analyze a valid YouTube video link, choose download options, and add the video to the queue.",
+    "category": "Quick Add URL Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid YouTube video URL into the URL field"
+      },
+      {
+        "type": "action",
+        "description": "Start analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify detected video details are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Select a download quality"
+      },
+      {
+        "type": "action",
+        "description": "Select a download format"
+      },
+      {
+        "type": "action",
+        "description": "Add the video to the queue"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the video appears in the download queue"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "View and update queue execution controls",
+    "description": "This verifies that a user can view queued downloads and adjust concurrency and speed limit settings from the queue page.",
+    "category": "Download Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/queue"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify queue items or the empty queue state are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the concurrent downloads setting"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the speed limit setting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the queue control settings are updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Reject an invalid video URL",
+    "description": "This verifies that a user sees a validation error when entering an invalid YouTube URL and no item is added to the queue.",
+    "category": "Quick Add URL Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/"
+      },
+      {
+        "type": "action",
+        "description": "Fill an invalid YouTube URL into the URL field"
+      },
+      {
+        "type": "action",
+        "description": "Start analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a URL validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no queue item is added"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Select specific videos from a playlist and queue them",
+    "description": "This verifies that a user can analyze a playlist, choose specific videos from the results, and add only the selected items to the queue.",
+    "category": "Quick Add URL Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid YouTube playlist URL into the URL field"
+      },
+      {
+        "type": "action",
+        "description": "Start analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify playlist results are displayed"
+      },
+      {
+        "type": "action",
+        "description": "Select specific videos from the playlist results"
+      },
+      {
+        "type": "action",
+        "description": "Add the selected videos to the queue"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected videos appear in the download queue"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Cancel a queued download",
+    "description": "This verifies that a user can cancel a download from the queue and remove it from active processing.",
+    "category": "Download Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/queue"
+      },
+      {
+        "type": "action",
+        "description": "Cancel a download"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the download is removed from active processing"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Retry a past download from history",
+    "description": "Verifies that a user can retry a history item and send it back into the download flow.",
+    "category": "Download History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/history"
+      },
+      {
+        "type": "action",
+        "description": "Click the retry action for a history item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the item is added back to the download flow"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Update the interface language",
+    "description": "Changing the language updates the app interface to the selected language.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/settings"
+      },
+      {
+        "type": "action",
+        "description": "Select a different language"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the interface updates in the selected language"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Open each main page from the sidebar",
+    "description": "This verifies that a local user can move between the app’s main sections from the sidebar and reach the expected page each time.",
+    "category": "Primary Navigation",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/"
+      },
+      {
+        "type": "action",
+        "description": "Click the dashboard navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard page is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the queue navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the queue page is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the history navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the history page is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the favorites navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the favorites page is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the scheduler navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the scheduler page is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the settings navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the settings page is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the about navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the about page is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "View completed and pending history entries",
+    "description": "Verifies that the history page shows stored downloads across completed, failed, and canceled states so the user can review past activity.",
+    "category": "Download History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/history"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify history entries are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify download status information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Switch between light and dark theme",
+    "description": "Toggling the theme updates the app appearance between light and dark modes.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/settings"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the theme setting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the visual theme changes"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Retry a failed download from the queue",
+    "description": "This verifies that a user can retry a failed item and return it to the queue for another attempt.",
+    "category": "Download Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/queue"
+      },
+      {
+        "type": "action",
+        "description": "Retry a failed download"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the item returns to the queue"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Create a scheduled download",
+    "description": "Verifies that a user can enter scheduling details and save a future download job successfully.",
+    "category": "Scheduler",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/scheduler"
+      },
+      {
+        "type": "action",
+        "description": "Fill a YouTube URL into the URL field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid time"
+      },
+      {
+        "type": "action",
+        "description": "Select a repeat option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the schedule form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the scheduled job is saved"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the scheduled job is listed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Change download defaults",
+    "description": "Updating the default quality and formats changes the saved download preferences.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/settings"
+      },
+      {
+        "type": "action",
+        "description": "Select a different default quality"
+      },
+      {
+        "type": "action",
+        "description": "Select one or more default formats"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the download default preferences are updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Adjust queue performance preferences",
+    "description": "Changing concurrent downloads and speed limit updates the app's download performance settings.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/settings"
+      },
+      {
+        "type": "action",
+        "description": "Change the concurrent downloads setting"
+      },
+      {
+        "type": "action",
+        "description": "Change the speed limit setting"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the performance preferences are updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Add a favorite back to the queue",
+    "description": "Verifies that a saved favorite can be sent back to the download queue for downloading again.",
+    "category": "Favorites",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/favorites"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to add a favorite back to the queue"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the favorite is added to the download queue"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Reorder queued downloads by dragging",
+    "description": "This verifies that a user can change download order in the queue and see the new order reflected immediately.",
+    "category": "Download Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/queue"
+      },
+      {
+        "type": "action",
+        "description": "Reorder a queued item to a new position"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the queue order changes"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Cancel a scheduled job",
+    "description": "Verifies that a user can remove a pending scheduled download before it runs.",
+    "category": "Scheduler",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/scheduler"
+      },
+      {
+        "type": "action",
+        "description": "Fill a YouTube URL into the URL field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid time"
+      },
+      {
+        "type": "action",
+        "description": "Submit the schedule form"
+      },
+      {
+        "type": "action",
+        "description": "Click the cancel action for the scheduled job"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the scheduled job is removed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the pending schedule list is updated"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Save a history item as a favorite",
+    "description": "Verifies that a user can mark a past download as a favorite and keep it in the saved list.",
+    "category": "Download History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/history"
+      },
+      {
+        "type": "action",
+        "description": "Click the favorite action for a history item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the item is saved to favorites"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Preview a custom filename template",
+    "description": "Editing the filename template updates the generated filename preview.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/settings"
+      },
+      {
+        "type": "action",
+        "description": "Edit the filename template"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the filename preview updates"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Delete a history item",
+    "description": "Verifies that a user can remove a past download from history and it no longer appears in the list.",
+    "category": "Download History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/history"
+      },
+      {
+        "type": "action",
+        "description": "Click the delete action for a history item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the item is removed from history"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Select a download folder",
+    "description": "Choosing a download folder updates the saved location for future downloads.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/settings"
+      },
+      {
+        "type": "action",
+        "description": "Select the download folder control"
+      },
+      {
+        "type": "action",
+        "description": "Choose a folder location"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected download folder is shown"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "View saved favorites",
+    "description": "Verifies that the favorites page shows the user’s saved videos for quick access.",
+    "category": "Favorites",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/favorites"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify favorite items are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "View app information and contact options",
+    "description": "The About page shows the app identity and provides contact links.",
+    "category": "About",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/about"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the app name and version are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify developer information and contact options are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "Open a downloaded file location from history",
+    "description": "Verifies that a user can open the containing folder for a history item when the desktop environment supports it.",
+    "category": "Download History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/history"
+      },
+      {
+        "type": "action",
+        "description": "Click the open folder action for a history item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the file location is opened or indicated as available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Remove a saved favorite",
+    "description": "Verifies that a user can delete a favorite from the saved list.",
+    "category": "Favorites",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/favorites"
+      },
+      {
+        "type": "action",
+        "description": "Click the remove action for a favorite item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the favorite is removed from the saved list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Show channel downloads as unsupported",
+    "description": "This verifies that a user sees a notice when analyzing a channel URL and is not offered a channel-wide queue action.",
+    "category": "Quick Add URL Analysis",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid YouTube channel URL into the URL field"
+      },
+      {
+        "type": "action",
+        "description": "Start analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a channel unsupported notice is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no channel-wide queue action is available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Reject invalid scheduling input",
+    "description": "Verifies that invalid scheduling input is blocked and the job remains unscheduled.",
+    "category": "Scheduler",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/scheduler"
+      },
+      {
+        "type": "action",
+        "description": "Leave the URL field empty"
+      },
+      {
+        "type": "action",
+        "description": "Submit the schedule form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no scheduled job is created"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC029",
+    "title": "Reset settings to defaults",
+    "description": "Confirming a settings reset restores the default preferences.",
+    "category": "Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/settings"
+      },
+      {
+        "type": "action",
+        "description": "Start the settings reset flow"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the reset"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the default settings are restored"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC030",
+    "title": "Show the empty queue state",
+    "description": "This verifies that a user sees an empty state when no downloads are currently queued.",
+    "category": "Download Queue Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/queue"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty queue state is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC031",
+    "title": "See an empty history state",
+    "description": "Verifies that the history page shows an empty state when no past downloads are stored.",
+    "category": "Download History",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/history"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC032",
+    "title": "See scheduler validation for missing required fields",
+    "description": "Verifies that the scheduler shows validation feedback when required fields are incomplete and does not save the job.",
+    "category": "Scheduler",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/scheduler"
+      },
+      {
+        "type": "action",
+        "description": "Fill a YouTube URL into the URL field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the schedule form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the job is not scheduled"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC033",
+    "title": "See an empty favorites state",
+    "description": "Verifies that the favorites page shows an empty state when no items have been saved.",
+    "category": "Favorites",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /#/favorites"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

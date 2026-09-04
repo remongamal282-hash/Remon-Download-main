@@ -1,0 +1,186 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - React 18
+  - Vite
+  - Electron
+  - React Router HashRouter
+  - Tailwind CSS
+  - Zustand
+  - react-hook-form
+  - i18next
+  - sonner
+  - dnd-kit
+  - zod
+routes:
+  - path: /#/
+    file: src/pages/DashboardPage.tsx
+    auth_required: false
+    description: Dashboard Quick Add page to paste a YouTube URL, analyze metadata, and add videos to the download queue
+  - path: /#/queue
+    file: src/pages/QueuePage.tsx
+    auth_required: false
+    description: Download queue with status, pause/resume/cancel/retry, reorder, concurrent download and speed limit controls
+  - path: /#/history
+    file: src/pages/HistoryPage.tsx
+    auth_required: false
+    description: History of completed, failed, and canceled downloads with retry, favorite, delete, and open-folder actions
+  - path: /#/favorites
+    file: src/pages/FavoritesPage.tsx
+    auth_required: false
+    description: Saved favorite videos with download-again and remove actions
+  - path: /#/scheduler
+    file: src/pages/SchedulerPage.tsx
+    auth_required: false
+    description: Schedule downloads for a future date/time with repeat options
+  - path: /#/settings
+    file: src/pages/SettingsPage.tsx
+    auth_required: false
+    description: App settings for language, theme, download folder, quality, formats, concurrency, speed limit, and filename template
+  - path: /#/about
+    file: src/pages/AboutPage.tsx
+    auth_required: false
+    description: About page with app name, version, developer info, and contact links
+features:
+  - name: Primary Navigation
+    description: Sidebar navigation across Dashboard, Queue, History, Favorites, Scheduler, Settings, and About
+    files:
+      - src/layouts/AppLayout.tsx
+      - src/constants/routes.ts
+      - src/App.tsx
+    entry_route: /#/
+    user_interactions:
+      - Click Dashboard nav item to open Quick Add
+      - Click Download Queue nav item
+      - Click History nav item
+      - Click Favorites nav item
+      - Click Scheduler nav item
+      - Click Settings nav item
+      - Click About nav item
+    api_calls: []
+    auth_required: false
+  - name: Quick Add URL Analysis
+    description: Paste a YouTube URL, analyze metadata, choose quality/format, and add to queue
+    files:
+      - src/pages/DashboardPage.tsx
+      - src/stores/metadataStore.ts
+      - src/services/metadataService.ts
+      - src/utils/urlValidation.ts
+    entry_route: /#/
+    user_interactions:
+      - Fill YouTube URL input
+      - Click Analyze
+      - See validation error for invalid URL
+      - See detected video info after analysis
+      - Select quality and format
+      - Click Add to Queue
+      - For playlists, select videos and click Add Selected to Queue
+    api_calls: []
+    auth_required: false
+  - name: Download Queue Management
+    description: View and control queued downloads including pause, resume, cancel, retry, delete, and drag reorder
+    files:
+      - src/pages/QueuePage.tsx
+      - src/stores/queueStore.ts
+      - src/services/downloadService.ts
+    entry_route: /#/queue
+    user_interactions:
+      - View empty queue state when no items exist
+      - Change concurrent downloads setting
+      - Change speed limit setting
+      - Pause an active download
+      - Resume a paused download
+      - Cancel a download
+      - Retry a failed download
+      - Drag items to reorder
+      - Open download folder when available
+    api_calls: []
+    auth_required: false
+  - name: Download History
+    description: Browse past downloads and retry, favorite, delete, or open files
+    files:
+      - src/pages/HistoryPage.tsx
+      - src/stores/historyStore.ts
+      - src/services/historyService.ts
+    entry_route: /#/history
+    user_interactions:
+      - View empty history state
+      - Retry a history item
+      - Star/add a history item to favorites
+      - Delete a history item
+      - Open containing folder when Electron APIs are available
+    api_calls: []
+    auth_required: false
+  - name: Favorites
+    description: Manage saved videos and send them back to the queue
+    files:
+      - src/pages/FavoritesPage.tsx
+      - src/stores/favoritesStore.ts
+      - src/services/favoritesService.ts
+    entry_route: /#/favorites
+    user_interactions:
+      - View empty favorites state
+      - Click download to add a favorite back to the queue
+      - Remove a favorite
+    api_calls: []
+    auth_required: false
+  - name: Scheduler
+    description: Create scheduled downloads with date, time, and repeat, then cancel them
+    files:
+      - src/pages/SchedulerPage.tsx
+      - src/stores/schedulerStore.ts
+      - src/services/schedulerService.ts
+      - src/utils/schedulerValidation.ts
+    entry_route: /#/scheduler
+    user_interactions:
+      - Fill URL, date, time, and repeat
+      - Submit to create a scheduled download
+      - See validation errors for invalid input
+      - Cancel a scheduled item
+      - Navigate to queue after a schedule is triggered
+    api_calls: []
+    auth_required: false
+  - name: Settings
+    description: Configure language, theme, download defaults, and reset settings
+    files:
+      - src/pages/SettingsPage.tsx
+      - src/stores/settingsStore.ts
+      - src/services/settingsService.ts
+      - src/constants/settings.ts
+    entry_route: /#/settings
+    user_interactions:
+      - Change language
+      - Toggle dark/light theme
+      - Change default quality and formats
+      - Change concurrent downloads and speed limit
+      - Edit filename template and see preview
+      - Click select download folder
+      - Click reset settings and confirm toast
+      - Click save if present
+    api_calls: []
+    auth_required: false
+  - name: About
+    description: View application identity, version, developer, and contact information
+    files:
+      - src/pages/AboutPage.tsx
+    entry_route: /#/about
+    user_interactions:
+      - Read app name and version
+      - View developer details
+      - Open email, phone, or WhatsApp contact links
+    api_calls: []
+    auth_required: false
+known_limitations:
+  - issue: App uses HashRouter, so browser URLs are hash-based (/#/queue) rather than path-based
+    location: src/App.tsx
+    impact: Tests must navigate hash routes, not /queue path-only URLs
+  - issue: Native download, folder picker, and tray features require Electron; Vite-only browser mode uses mocks/simulation
+    location: src/services/serviceResolver.ts
+    impact: Folder picker may show unavailable toast; real yt-dlp downloads will not run in browser-only TestSprite sessions
+  - issue: Channel-wide downloads are not available
+    location: src/pages/DashboardPage.tsx
+    impact: Analyzing a channel URL shows a notice instead of queueing the whole channel
+  - issue: No login or user accounts
+    location: src/App.tsx
+    impact: Auth-related tests are not applicable

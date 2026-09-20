@@ -22,7 +22,7 @@ interface QueueState {
   tick: (concurrentDownloads: number, speedLimit: SpeedLimit, now?: number) => void;
   markHistoryRecorded: (id: string, recordedAt: string) => void;
   remove: (id: string) => Promise<void>;
-  clear: () => void;
+  clear: () => Promise<void>;
   clearLastError: () => void;
 }
 
@@ -81,9 +81,17 @@ export const useQueueStore = create<QueueState>((set, get) => {
   const downloadService = resolveDownloadService();
   if (downloadService.onItemUpdate) {
     downloadService.onItemUpdate((id, updatedItem) => {
-      set((state) => ({
-        items: state.items.map((item) => (item.id === id ? updatedItem : item))
-      }));
+      set((state) => {
+        const exists = state.items.some((item) => item.id === id);
+        if (exists) {
+          return {
+            items: state.items.map((item) => (item.id === id ? updatedItem : item))
+          };
+        }
+        return {
+          items: normalizeOrder([...state.items, updatedItem])
+        };
+      });
     });
   }
 
@@ -207,7 +215,10 @@ export const useQueueStore = create<QueueState>((set, get) => {
         items: state.items.map((item) => (item.id === id ? { ...item, historyRecordedAt: recordedAt } : item))
       }));
     },
-    clear: () => set({ items: [], lastError: null }),
+    clear: async () => {
+      await resolveDownloadService().clear();
+      set({ items: [], lastError: null });
+    },
     clearLastError: () => set({ lastError: null })
   };
 });

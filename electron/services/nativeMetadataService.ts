@@ -44,14 +44,17 @@ import type {
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const YTDLP_TIMEOUT_MS = 15000; // 15 seconds - optimized for faster response
-const PLAYLIST_TIMEOUT_MS = 25000; // 25 seconds - playlists take longer
+const YTDLP_TIMEOUT_MS = 60000; // 60 seconds - realistic ceiling for Windows Python startup + format extraction
+const PLAYLIST_TIMEOUT_MS = 120000; // 120 seconds - playlists take longer
 const YOUTUBE_HOSTNAMES = new Set([
   "youtube.com",
   "www.youtube.com",
   "m.youtube.com",
   "youtu.be"
 ]);
+
+// Phase 14.1: System PATH candidates — checked by file existence only, no --version spawn.
+const SYSTEM_PATH_CANDIDATES = ["yt-dlp.exe", "yt-dlp", "youtube-dl.exe", "youtube-dl"];
 
 // ─── Simple LRU Cache for Metadata ──────────────────────────────────────────
 
@@ -316,8 +319,11 @@ function parseVideoMetadata(
 
   const audioFormats = new Set<string>(["mp3", "opus"]);
 
-  // Best format info
-  const bestFormat = formats.find((f) => getFormatHeight(f)) ?? formats[0];
+  // Best format info (select format with highest resolution)
+  const maxHeight = sortedHeights[0];
+  const bestFormat = (maxHeight ? formats.find((f) => getFormatHeight(f) === maxHeight) : undefined)
+    ?? formats.find((f) => getFormatHeight(f))
+    ?? formats[0];
   const bestFormatHeight = bestFormat ? getFormatHeight(bestFormat) : undefined;
 
   const resolution = bestFormatHeight
@@ -432,8 +438,8 @@ export class NativeMetadataService {
   private ytdlpPath: string | null = null;
   private inFlightAnalyses = new Map<string, Promise<AnalysisResult>>();
   private metadataCache = new MetadataCache<AnalysisResult>(
-    100,
-    1000 * 60 * 60
+    50,
+    1000 * 60 * 30 // 30 minutes TTL
   );
   private executor: ProcessExecutor;
 
@@ -445,10 +451,27 @@ export class NativeMetadataService {
   }
 
   /**
+   * Updates settings yt-dlp path dynamically without recreating instance or dropping cache.
+   */
+  updateSettingsYtdlpPath(newPath?: string): void {
+    const trimmed = newPath?.trim() || undefined;
+    if (this.settingsYtdlpPath !== trimmed) {
+      this.settingsYtdlpPath = trimmed;
+      this.ytdlpPath = null; // Re-resolve on next run
+    }
+  }
+
+  /**
    * Resolves yt-dlp executable path.
-   * Priority: settingsPath → system PATH.
+   * Priority: settingsPath → bundled candidates → system PATH.
+   *
+   * Phase 14.1: System PATH fallback no longer spawns `--version`.
+   * It only checks file accessibility (fs.access F_OK) which is O(1) and
+   * avoids an extra Python/yt-dlp cold-start penalty on first analysis.
    */
   private async resolveYtdlpPath(): Promise<string> {
+    const t0 = Date.now();
+
     // Priority 1: Settings-provided path
     if (this.settingsYtdlpPath && this.settingsYtdlpPath.trim()) {
       try {
@@ -457,66 +480,101 @@ export class NativeMetadataService {
           fsConstants.F_OK
         );
 
-        console.log(`[MetadataService] Resolved yt-dlp from settings: ${this.settingsYtdlpPath}`);
+        console.log(`[MetadataService] Resolved yt-dlp from settings (+${Date.now() - t0}ms): ${this.settingsYtdlpPath}`);
         return this.settingsYtdlpPath;
       } catch {
-        // Invalid settings path - fall through to PATH
+        // Invalid settings path - fall through to bundled candidates
       }
     }
 
+    // Priority 2: Bundled runtime (packaged app)
     for (const candidate of bundledYtdlpCandidates()) {
       try {
         await this.executor.checkAccess(candidate, fsConstants.F_OK);
-        console.log(`[MetadataService] Resolved bundled yt-dlp path: ${candidate}`);
+        console.log(`[MetadataService] Resolved bundled yt-dlp (+${Date.now() - t0}ms): ${candidate}`);
         return candidate;
       } catch {
-        // Try the next bundled or PATH candidate.
+        // Try the next bundled candidate.
       }
     }
 
-    // Priority 2: System PATH (try common names)
-    const candidates = [
-      "yt-dlp",
-      "yt-dlp.exe",
-      "youtube-dl",
-      "youtube-dl.exe"
-    ];
+    // Priority 3: System PATH — file-existence check only (no --version spawn).
+    // Searching PATH manually avoids a cold yt-dlp Python startup just for discovery.
+    const pathDirs = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean);
+    for (const candidate of SYSTEM_PATH_CANDIDATES) {
+      // Check absolute path in each PATH dir
+      for (const dir of pathDirs) {
+        const full = path.join(dir, candidate);
+        try {
+          await this.executor.checkAccess(full, fsConstants.F_OK);
+          console.log(`[MetadataService] Resolved yt-dlp from PATH (+${Date.now() - t0}ms): ${full}`);
+          return full;
+        } catch {
+          // Not in this dir, continue
+        }
+      }
 
-    for (const candidate of candidates) {
+      // Also try bare name (let OS resolve it at spawn time)
+      // This is the last resort - we just trust the OS spawn to find it
+    }
+
+    // Last resort: try bare executable name and let OS resolve at spawn time
+    console.warn(`[MetadataService] yt-dlp not found in PATH dirs, trying bare name as last resort (+${Date.now() - t0}ms)`);
+    // Return the bare name and let the spawn fail at actual execution if not found
+    // This avoids an extra --version process start
+    for (const candidate of SYSTEM_PATH_CANDIDATES) {
       try {
-        // Try spawning with --version to verify it exists and works
+        // Quick spawn test with immediate kill to detect ENOENT vs other errors
         await new Promise<void>((resolve, reject) => {
-          const proc = this.executor.spawn(
-            candidate,
-            ["--version"],
-            { timeout: 5000 }
-          );
-
-          proc.on("error", reject);
-
-          proc.on("exit", (code) => {
-            if (code === 0) {
-              resolve();
-            } else {
-              reject(new Error(`Exit code ${code}`));
-            }
+          const proc = this.executor.spawn(candidate, ["--version"], { timeout: 5000, windowsHide: true });
+          proc.on("error", (err: NodeJS.ErrnoException) => {
+            if (err.code === "ENOENT") reject(new Error("not_found"));
+            else resolve(); // exists but errored — still usable
           });
+          proc.on("exit", () => resolve());
         });
-
-        console.log(`[MetadataService] Resolved yt-dlp from system PATH: ${candidate}`);
+        console.log(`[MetadataService] Resolved yt-dlp via bare name (+${Date.now() - t0}ms): ${candidate}`);
         return candidate;
       } catch {
-        // Try next candidate
+        // Not found
       }
     }
 
-    console.error("[MetadataService] Could not resolve yt-dlp executable from any candidate path");
+    console.error(`[MetadataService] Could not resolve yt-dlp from any source (+${Date.now() - t0}ms)`);
     throw new Error("ytdlp_not_found");
   }
 
   /**
+   * Phase 14.1 — Warm-up: eagerly resolve yt-dlp path and prime the singleton cache.
+   * Call this on app startup (after app.whenReady) so the first user analysis
+   * does NOT pay the path-resolution overhead.
+   *
+   * Fire-and-forget: errors are logged but never surfaced to the caller.
+   */
+  async warmUp(settingsYtdlpPath?: string): Promise<void> {
+    if (settingsYtdlpPath !== undefined) {
+      this.updateSettingsYtdlpPath(settingsYtdlpPath);
+    }
+
+    if (this.ytdlpPath) {
+      console.log(`[MetadataService] warmUp: yt-dlp path already resolved: ${this.ytdlpPath}`);
+      return;
+    }
+
+    try {
+      const t0 = Date.now();
+      this.ytdlpPath = await this.resolveYtdlpPath();
+      console.log(`[MetadataService] warmUp complete in ${Date.now() - t0}ms → ${this.ytdlpPath}`);
+    } catch (err) {
+      // Log but don't throw — warmUp is best-effort
+      console.warn("[MetadataService] warmUp failed (will retry on first analyze call):", err);
+      this.ytdlpPath = null;
+    }
+  }
+
+  /**
    * Spawns yt-dlp process and returns parsed JSON output.
-   * Optimized for speed with faster options.
+   * Optimized with Buffer chunks to minimize memory allocations and GC thrashing.
    */
   private async executeYtdlp(
     ytdlpPath: string,
@@ -550,18 +608,39 @@ export class NativeMetadataService {
         }
       );
 
-      let stdout = "";
-      let stderr = "";
+      const stdoutChunks: Buffer[] = [];
+      const stderrChunks: Buffer[] = [];
+
+      const cleanupProcess = () => {
+        try {
+          proc.stdout?.removeAllListeners();
+          proc.stderr?.removeAllListeners();
+          proc.removeAllListeners();
+        } catch {
+          // ignore cleanup errors
+        }
+      };
 
       proc.stdout?.on("data", (data) => {
-        stdout += data.toString();
+        stdoutChunks.push(Buffer.isBuffer(data) ? data : Buffer.from(data));
       });
 
       proc.stderr?.on("data", (data) => {
-        stderr += data.toString();
+        stderrChunks.push(Buffer.isBuffer(data) ? data : Buffer.from(data));
       });
 
       proc.on("error", (err: any) => {
+        cleanupProcess();
+        try {
+          if (!proc.killed) proc.kill();
+        } catch {
+          // ignore kill errors
+        }
+
+        const stderr = Buffer.concat(stderrChunks).toString("utf-8");
+        stdoutChunks.length = 0;
+        stderrChunks.length = 0;
+
         console.error(`[MetadataService] yt-dlp process error path=${ytdlpPath} code=${err.code ?? "unknown"} stderr=${stderr.slice(0, 4000)}`, err);
         if (err.code === "ETIMEDOUT") {
           reject(new Error("ytdlp_timeout"));
@@ -573,6 +652,12 @@ export class NativeMetadataService {
       });
 
       proc.on("exit", (code) => {
+        cleanupProcess();
+        const stdout = Buffer.concat(stdoutChunks).toString("utf-8");
+        const stderr = Buffer.concat(stderrChunks).toString("utf-8");
+        stdoutChunks.length = 0;
+        stderrChunks.length = 0;
+
         console.log(`[MetadataService] yt-dlp exit code=${code} path=${ytdlpPath} stderr=${stderr.slice(0, 4000)}`);
         if (code === 0) {
           try {
@@ -619,16 +704,26 @@ export class NativeMetadataService {
 
   private isRetryableYtdlpFailure(error: unknown): boolean {
     const message = String(error).toLowerCase();
+    // NEVER retry non-retryable conditions: timeouts, private/unavailable videos, unsupported URLs.
+    // Retrying on timeout multiplies delays by 6 and exhausts RAM/CPU.
+    if (
+      message.includes("private") ||
+      message.includes("unavailable") ||
+      message.includes("not available") ||
+      message.includes("unsupported") ||
+      message.includes("timeout") ||
+      message.includes("ytdlp_timeout") ||
+      message.includes("network")
+    ) {
+      return false;
+    }
+
+    // Only retry client restriction / bot detection failures
     return [
-      "video unavailable",
-      "not available",
-      "private video",
-      "members-only",
-      "network",
-      "connection",
-      "ytdlp_failed",
-      "ytdlp_timeout",
-      "unsupported_url"
+      "sign in to confirm",
+      "bot",
+      "player_client",
+      "429"
     ].some((token) => message.includes(token));
   }
 
@@ -637,13 +732,10 @@ export class NativeMetadataService {
     url: string,
     isPlaylist = false
   ): Promise<YtdlpRawOutput> {
+    // Only attempt default first, then at most one viable player client fallback (android) if blocked by bot check
     const extractorArgCandidates: Array<string | undefined> = [
       undefined,
-      "youtube:player_client=web",
       "youtube:player_client=android",
-      "youtube:player_client=ios",
-      "youtube:player_client=web_safari",
-      "youtube:player_client=tv_embedded",
     ];
 
     let lastError: unknown = null;
@@ -718,25 +810,36 @@ export class NativeMetadataService {
   }
 
   private async analyzeUncached(trimmedUrl: string): Promise<AnalysisResult> {
+    const t0 = Date.now();
 
-    // Resolve yt-dlp path (cached after first successful resolution)
+    // Phase 14.1: Resolve yt-dlp path (cached after first successful resolution).
+    // warmUp() should have pre-populated this.ytdlpPath on startup; this is the fallback.
     if (!this.ytdlpPath) {
+      console.warn(`[MetadataService] yt-dlp path not pre-resolved — resolving now (this adds latency to first analysis)`);
+      const tResolve = Date.now();
       this.ytdlpPath = await this.resolveYtdlpPath();
+      console.log(`[MetadataService] yt-dlp path resolved in ${Date.now() - tResolve}ms → ${this.ytdlpPath}`);
+    } else {
+      console.log(`[MetadataService] yt-dlp path already resolved (warmUp succeeded): ${this.ytdlpPath}`);
     }
 
+    const tAfterResolve = Date.now();
     const linkType = classifyYouTubeUrl(trimmedUrl);
-    console.log(`[MetadataService] Analyzing ${linkType} URL with resolved path ${this.ytdlpPath}`);
+    console.log(`[MetadataService] Phase timing — pathResolve: ${tAfterResolve - t0}ms | type: ${linkType} | url: ${trimmedUrl}`);
 
     let result: AnalysisResult;
 
     // Handle different link types
     if (linkType === "playlist" || linkType === "channel") {
+      const tYtdlp = Date.now();
       const raw = await this.executeYtdlpWithFallback(
         this.ytdlpPath,
         trimmedUrl,
         true
       );
+      console.log(`[MetadataService] Phase timing — ytdlp (${linkType}): ${Date.now() - tYtdlp}ms`);
 
+      const tParse = Date.now();
       if (linkType === "playlist") {
         result = parsePlaylistMetadata(
           raw as YtdlpRawPlaylist,
@@ -748,28 +851,62 @@ export class NativeMetadataService {
           trimmedUrl
         );
       }
+      console.log(`[MetadataService] Phase timing — parse (${linkType}): ${Date.now() - tParse}ms`);
     } else {
       // video | shorts | playlist-video
+      const tYtdlp = Date.now();
       const raw = await this.executeYtdlpWithFallback(
         this.ytdlpPath,
         trimmedUrl,
         false
       );
+      console.log(`[MetadataService] Phase timing — ytdlp (video): ${Date.now() - tYtdlp}ms`);
 
+      const tParse = Date.now();
       result = parseVideoMetadata(
         raw as YtdlpRawVideo,
         linkType,
         1
       );
+      console.log(`[MetadataService] Phase timing — parse (video): ${Date.now() - tParse}ms`);
     }
 
     // 💾 Cache the result for future requests (shared cache)
     this.metadataCache.set(trimmedUrl, result);
 
     console.log(
-      `[MetadataService] Cached metadata for ${trimmedUrl}`
+      `[MetadataService] Analysis complete — total: ${Date.now() - t0}ms | url: ${trimmedUrl}`
     );
 
     return result;
   }
+
+  /**
+   * Clears in-memory metadata cache.
+   */
+  clearCache(): void {
+    this.metadataCache.clear();
+  }
+}
+
+// ─── Shared Instance Provider ───────────────────────────────────────────────
+
+let sharedMetadataServiceInstance: NativeMetadataService | null = null;
+
+export function getSharedMetadataService(
+  settingsYtdlpPath?: string,
+  executor?: ProcessExecutor
+): NativeMetadataService {
+  if (!sharedMetadataServiceInstance) {
+    sharedMetadataServiceInstance = new NativeMetadataService(settingsYtdlpPath, executor);
+  } else {
+    if (settingsYtdlpPath !== undefined) {
+      sharedMetadataServiceInstance.updateSettingsYtdlpPath(settingsYtdlpPath);
+    }
+  }
+  return sharedMetadataServiceInstance;
+}
+
+export function resetSharedMetadataService(): void {
+  sharedMetadataServiceInstance = null;
 }

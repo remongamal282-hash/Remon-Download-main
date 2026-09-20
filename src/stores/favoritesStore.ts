@@ -11,6 +11,7 @@ interface FavoritesState {
   load: () => Promise<void>;
   add: (item: FavoriteItem) => Promise<FavoriteItem | null>;
   remove: (id: string) => Promise<void>;
+  clear: () => Promise<void>;
   isFavorite: (sourceUrl: string) => Promise<boolean>;
   download: (id: string, quality: string, format: string) => boolean;
   failNext: (error: ErrorModel) => void;
@@ -63,6 +64,14 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
     try {
       await resolveFavoritesService().remove(id);
       set((state) => ({ items: state.items.filter((item) => item.id !== id), error: null }));
+    } catch (error) {
+      set({ error: toErrorModel(error) });
+    }
+  },
+  clear: async () => {
+    try {
+      await resolveFavoritesService().clear();
+      set({ items: [], error: null });
     } catch (error) {
       set({ error: toErrorModel(error) });
     }

@@ -2,7 +2,7 @@ import type { DownloadItem, ScheduledDownload, VideoMetadata } from "../src/type
 import { NativeDownloadService } from "./services/nativeDownloadService";
 import { NativeSchedulerService } from "./services/nativeSchedulerService";
 import { NativeNotificationService } from "./services/nativeNotificationService";
-import { NativeSettingsService } from "./services/nativeSettingsService";
+import { NativeSettingsService, getSharedSettingsService } from "./services/nativeSettingsService";
 import type { DownloadStateChangePayload } from "./ipc/channels";
 
 export interface SchedulerBackgroundLoopOptions {
@@ -35,7 +35,7 @@ export class SchedulerBackgroundLoop {
     this.getNotificationService = options.getNotificationService ?? (() => null);
     this.getSettings = options.getSettings ?? (async () => {
       try {
-        const settingsService = new NativeSettingsService();
+        const settingsService = getSharedSettingsService();
         await settingsService.initialize();
         const settings = await settingsService.get();
         return {
@@ -152,14 +152,25 @@ export class SchedulerBackgroundLoop {
 
     for (const metadata of metadataItems) {
       const itemId = `${schedule.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const targetQuality = schedule.quality || settings.defaultQuality;
+      const targetFormat = schedule.format || settings.defaultVideoFormat;
+
+      const itemQuality = (metadata.qualityOptions && metadata.qualityOptions.includes(targetQuality))
+        ? targetQuality
+        : ((metadata.qualityOptions && metadata.qualityOptions[0]) || targetQuality);
+
+      const itemFormat = (metadata.videoFormats && metadata.videoFormats.includes(targetFormat))
+        ? targetFormat
+        : ((metadata.videoFormats && metadata.videoFormats[0]) || targetFormat);
+
       const item: DownloadItem = {
         id: itemId,
         metadataId: metadata.id,
         thumbnail: metadata.thumbnail,
         title: metadata.title,
         sourceUrl: metadata.sourceUrl,
-        quality: settings.defaultQuality,
-        format: settings.defaultVideoFormat,
+        quality: itemQuality,
+        format: itemFormat,
         fileSize: metadata.fileSize,
         downloadedSize: 0,
         speed: 0,

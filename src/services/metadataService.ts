@@ -38,7 +38,7 @@ function createVideo(url: string, index = 1, linkType: VideoLinkType = "video"):
     channelName: "Example Channel",
     duration: index === 1 ? "12:48" : `0${index + 2}:2${index}`,
     views: 1240000 + index * 13000,
-    qualityOptions: ["2160p", "1440p", "1080p", "720p", "480p"],
+    qualityOptions: ["4320p", "2160p", "1440p", "1080p", "720p", "480p"],
     videoFormats: ["mp4", "webm", "mkv"],
     audioFormats: ["mp3", "opus"],
     resolution: "1080p",

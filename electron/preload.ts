@@ -50,6 +50,7 @@ const electronAPI: ElectronAPI = {
     cancel: (id: string): Promise<DownloadItem> => invoke(IPC_CHANNELS.DOWNLOAD_CANCEL, { id }),
     retry: (id: string): Promise<DownloadItem> => invoke(IPC_CHANNELS.DOWNLOAD_RETRY, { id }),
     remove: (id: string): Promise<string> => invoke(IPC_CHANNELS.DOWNLOAD_REMOVE, { id }),
+    clear: (): Promise<void> => invoke(IPC_CHANNELS.DOWNLOAD_CLEAR),
     reorder: (orderedIds: string[]): Promise<DownloadItem[]> =>
       invoke(IPC_CHANNELS.DOWNLOAD_REORDER, { orderedIds }),
 
@@ -94,7 +95,8 @@ const electronAPI: ElectronAPI = {
   favorites: {
     getAll: (): Promise<FavoriteItem[]> => invoke(IPC_CHANNELS.FAVORITES_GET_ALL),
     add: (item: FavoriteItem): Promise<FavoriteItem> => invoke(IPC_CHANNELS.FAVORITES_ADD, { item }),
-    remove: (id: string): Promise<string> => invoke(IPC_CHANNELS.FAVORITES_REMOVE, { id })
+    remove: (id: string): Promise<string> => invoke(IPC_CHANNELS.FAVORITES_REMOVE, { id }),
+    clear: (): Promise<void> => invoke(IPC_CHANNELS.FAVORITES_CLEAR)
   },
 
   scheduler: {
@@ -106,6 +108,7 @@ const electronAPI: ElectronAPI = {
       invoke(IPC_CHANNELS.SCHEDULER_UPDATE, { schedule }),
     cancel: (id: string): Promise<ScheduledDownload> => invoke(IPC_CHANNELS.SCHEDULER_CANCEL, { id }),
     remove: (id: string): Promise<string> => invoke(IPC_CHANNELS.SCHEDULER_REMOVE, { id }),
+    clear: (): Promise<void> => invoke(IPC_CHANNELS.SCHEDULER_CLEAR),
     tick: (now: number): Promise<{ items: ScheduledDownload[]; triggered: Array<{ schedule: ScheduledDownload; metadata: any }> }> =>
       invoke(IPC_CHANNELS.SCHEDULER_TICK, { now })
   }

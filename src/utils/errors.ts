@@ -10,6 +10,7 @@ const errorMessages: Record<AppErrorCode, string> = {
   ytdlp_error: "errors.ytdlpError",
   ytdlp_not_found: "errors.ytdlpNotFound",
   ffmpeg_error: "errors.ffmpegError",
+  timeout: "errors.timeout",
   unknown: "errors.unknown"
 };
 

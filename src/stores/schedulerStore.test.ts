@@ -95,4 +95,17 @@ describe("useSchedulerStore", () => {
     expect(useSchedulerStore.getState().error).toMatchObject({ code: "network_error" });
     expect(useSchedulerStore.getState().isLoading).toBe(false);
   });
+
+  it("does not toggle isLoading on subsequent loads when scheduler items list is empty", async () => {
+    // Initial load
+    await useSchedulerStore.getState().load();
+    expect(useSchedulerStore.getState().items).toHaveLength(0);
+    expect(useSchedulerStore.getState().isLoading).toBe(false);
+
+    // Call load again while empty - isLoading should remain false (preventing UI flicker)
+    const loadPromise = useSchedulerStore.getState().load();
+    expect(useSchedulerStore.getState().isLoading).toBe(false);
+    await loadPromise;
+    expect(useSchedulerStore.getState().isLoading).toBe(false);
+  });
 });

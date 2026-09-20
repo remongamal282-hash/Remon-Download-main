@@ -5,9 +5,10 @@ import { registerIpcHandlers } from "./ipc/handlers";
 import { createTray, destroyTray, showWindow, hideWindow, hasTray } from "./tray";
 import { SchedulerBackgroundLoop } from "./schedulerBackground";
 import { NativeSchedulerService } from "./services/nativeSchedulerService";
-import { NativeSettingsService } from "./services/nativeSettingsService";
+import { NativeSettingsService, getSharedSettingsService } from "./services/nativeSettingsService";
 import { NativeDownloadService } from "./services/nativeDownloadService";
 import { NativeNotificationService } from "./services/nativeNotificationService";
+import { getSharedMetadataService } from "./services/nativeMetadataService";
 
 let mainWindow: BrowserWindow | null = null;
 const sharedSchedulerService = new NativeSchedulerService();
@@ -16,7 +17,7 @@ let nativeNotificationService: NativeNotificationService | null = null;
 let schedulerLoop: SchedulerBackgroundLoop | null = null;
 let minimizeToTrayEnabled = false;
 let isQuitting = false;
-const settingsService = new NativeSettingsService();
+const settingsService = getSharedSettingsService();
 const STARTUP_HIDDEN_ARG = "--hidden";
 
 function isStartupLaunch(): boolean {
@@ -131,8 +132,6 @@ function createWindow(): void {
   }
 
   if (!schedulerLoop) {
-    const settingsService = new NativeSettingsService();
-
     void settingsService.initialize();
     void sharedSchedulerService.initialize();
 
@@ -210,6 +209,7 @@ function createWindow(): void {
 
   registerIpcHandlers({
     schedulerService: sharedSchedulerService,
+    settingsService,
     onDownloadServiceReady: (service) => {
       nativeDownloadService = service;
       schedulerLoop?.start();
@@ -288,6 +288,11 @@ app.whenReady().then(async () => {
       args: settings.startWithWindows ? [STARTUP_HIDDEN_ARG] : []
     });
   }
+
+  // Phase 14.1 — Warm-up: pre-resolve yt-dlp path in background so the first
+  // user analysis does not pay the path-resolution overhead.
+  // Fire-and-forget: errors are handled inside warmUp() and do not block startup.
+  void getSharedMetadataService(settings.ytdlpPath).warmUp(settings.ytdlpPath);
 
   createWindow();
 

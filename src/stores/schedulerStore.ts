@@ -9,6 +9,7 @@ import { useSettingsStore } from "./settingsStore";
 interface SchedulerState {
   items: ScheduledDownload[];
   isLoading: boolean;
+  hasLoaded: boolean;
   error: ErrorModel | null;
   lastTriggeredId: string | null;
   load: () => Promise<void>;
@@ -16,6 +17,7 @@ interface SchedulerState {
   update: (id: string, input: SchedulerInput) => Promise<ScheduledDownload | null>;
   cancel: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  clear: () => Promise<void>;
   tick: (now?: number) => Promise<number>;
   failNext: (error: ErrorModel) => void;
   clearError: () => void;
@@ -40,16 +42,20 @@ let schedulerTickInFlight = false;
 export const useSchedulerStore = create<SchedulerState>((set, get) => ({
   items: [],
   isLoading: false,
+  hasLoaded: false,
   error: null,
   lastTriggeredId: null,
   load: async () => {
-    set((state) => ({ isLoading: state.items.length === 0, error: null }));
+    set((state) => ({
+      isLoading: !state.hasLoaded && state.items.length === 0,
+      error: null
+    }));
 
     try {
       const items = await resolveSchedulerService().getAll();
-      set({ items, isLoading: false });
+      set({ items, isLoading: false, hasLoaded: true });
     } catch (error) {
-      set({ error: toErrorModel(error), isLoading: false });
+      set({ error: toErrorModel(error), isLoading: false, hasLoaded: true });
     }
   },
   create: async (input) => {
@@ -94,6 +100,14 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
       set({ error: toErrorModel(error) });
     }
   },
+  clear: async () => {
+    try {
+      await resolveSchedulerService().clear();
+      set({ items: [], error: null, lastTriggeredId: null });
+    } catch (error) {
+      set({ error: toErrorModel(error) });
+    }
+  },
   tick: async (now = Date.now()) => {
     if (schedulerTickInFlight) {
       return 0;
@@ -115,10 +129,21 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
 
         seenTriggeredScheduleIds.add(identityKey);
 
+        const firstVideo = triggered.metadata[0];
+        const scheduleQuality = triggered.schedule.quality || settings.defaultQuality;
+        const targetQuality = (firstVideo?.qualityOptions && firstVideo.qualityOptions.includes(scheduleQuality))
+          ? scheduleQuality
+          : (firstVideo?.qualityOptions?.[0] ?? scheduleQuality);
+
+        const scheduleFormat = triggered.schedule.format || settings.defaultVideoFormat;
+        const targetFormat = (firstVideo?.videoFormats && firstVideo.videoFormats.includes(scheduleFormat))
+          ? scheduleFormat
+          : (firstVideo?.videoFormats?.[0] ?? scheduleFormat);
+
         useQueueStore.getState().addManyFromMetadata(
           triggered.metadata,
-          settings.defaultQuality,
-          settings.defaultVideoFormat
+          targetQuality,
+          targetFormat
         );
       });
 
@@ -141,7 +166,7 @@ export const useSchedulerStore = create<SchedulerState>((set, get) => ({
   clearError: () => set({ error: null, lastTriggeredId: null }),
   clearMockData: async () => {
     await resolveSchedulerService().clear();
-    set({ items: [], isLoading: false, error: null, lastTriggeredId: null });
+    set({ items: [], isLoading: false, hasLoaded: false, error: null, lastTriggeredId: null });
   },
   resetForTests: async () => {
     await get().clearMockData();

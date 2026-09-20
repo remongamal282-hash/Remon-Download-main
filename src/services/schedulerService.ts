@@ -7,6 +7,8 @@ export interface SchedulerInput {
   date: string;
   time: string;
   repeat: ScheduleRepeat;
+  quality?: string;
+  format?: string;
 }
 
 export interface SchedulerTickResult {
@@ -112,7 +114,7 @@ async function createMetadata(schedule: ScheduledDownload): Promise<VideoMetadat
     channelName: "Scheduled Queue",
     duration: "10:24",
     views: 128000,
-    qualityOptions: ["2160p", "1440p", "1080p", "720p", "480p"],
+    qualityOptions: ["4320p", "2160p", "1440p", "1080p", "720p", "480p"],
     videoFormats: ["mp4", "webm", "mkv"],
     audioFormats: ["mp3", "opus"],
     resolution: "1080p",
@@ -148,6 +150,8 @@ export class MockSchedulerService implements SchedulerService {
       date: input.date,
       time: input.time,
       repeat: input.repeat,
+      quality: input.quality,
+      format: input.format,
       status: "scheduled",
       nextRunAt: buildRunAt(input.date, input.time),
       createdAt: now,
@@ -170,6 +174,8 @@ export class MockSchedulerService implements SchedulerService {
       date: input.date,
       time: input.time,
       repeat: input.repeat,
+      quality: input.quality ?? existing.quality,
+      format: input.format ?? existing.format,
       status: "scheduled",
       nextRunAt: buildRunAt(input.date, input.time),
       updatedAt: new Date().toISOString(),

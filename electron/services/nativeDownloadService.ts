@@ -115,6 +115,7 @@ interface YtdlpProgress {
 export class NativeDownloadService extends EventEmitter {
   private activeDownloads: Map<string, ActiveDownload> = new Map();
   private processGenerations: Map<string, number> = new Map();
+  private retryTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private items: Map<string, DownloadItem> = new Map();
   private executor: ProcessExecutor;
   private ytdlpPath: string | null = null;
@@ -927,9 +928,9 @@ export class NativeDownloadService extends EventEmitter {
   /**
    * Kill process tree
    */
-  private killProcessTree(
+  private async killProcessTree(
     proc: ChildProcess | null
-  ): void {
+  ): Promise<void> {
     if (
       !proc ||
       !proc.pid
@@ -968,80 +969,163 @@ export class NativeDownloadService extends EventEmitter {
       process.platform === "win32";
 
     if (isWindows) {
-      try {
-        console.log(
-          `[Download] Attempting taskkill for PID ${pid} (Windows) with /F /T flags`
-        );
-
-        const killer = spawn(
-          "taskkill",
-          [
-            "/PID",
-            String(pid),
-            "/T",
-            "/F"
-          ],
-          {
-            stdio: "pipe",
-            windowsHide: true
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (!settled) {
+            settled = true;
+            resolve();
           }
-        );
+        };
 
-        let killOutput = "";
-        let killError = "";
+        const timeoutTimer = setTimeout(finish, 2000);
 
-        killer.stdout?.on(
-          "data",
-          (data) => {
-            killOutput +=
-              data.toString();
-          }
-        );
+        try {
+          console.log(
+            `[Download] Attempting taskkill for PID ${pid} (Windows) with /F /T flags`
+          );
 
-        killer.stderr?.on(
-          "data",
-          (data) => {
-            killError +=
-              data.toString();
-          }
-        );
-
-        killer.on(
-          "exit",
-          (code) => {
-            if (code === 0) {
-              console.log(
-                `[Download] ✓ taskkill succeeded for PID ${pid}: ${killOutput.trim()}`
-              );
-            } else if (
-              code === 128
-            ) {
-              console.log(
-                `[Download] ✓ Process ${pid} not found (already dead), exit code 128`
-              );
-            } else {
-              console.warn(
-                `[Download] taskkill failed with code ${code} for PID ${pid}: ${killError.trim()}`
-              );
+          const killer = spawn(
+            "taskkill",
+            [
+              "/PID",
+              String(pid),
+              "/T",
+              "/F"
+            ],
+            {
+              stdio: "pipe",
+              windowsHide: true
             }
-          }
-        );
+          );
 
-        killer.on(
-          "error",
-          (err) => {
-            console.warn(
-              `[Download] taskkill error for PID ${pid}:`,
-              err
-            );
-          }
-        );
-      } catch (err) {
-        console.warn(
-          `[Download] Failed to spawn taskkill for PID ${pid}:`,
-          err
-        );
+          let killOutput = "";
+          let killError = "";
+
+          killer.stdout?.on(
+            "data",
+            (data) => {
+              killOutput +=
+                data.toString();
+            }
+          );
+
+          killer.stderr?.on(
+            "data",
+            (data) => {
+              killError +=
+                data.toString();
+            }
+          );
+
+          killer.on(
+            "exit",
+            (code) => {
+              clearTimeout(timeoutTimer);
+              if (code === 0) {
+                console.log(
+                  `[Download] ✓ taskkill succeeded for PID ${pid}: ${killOutput.trim()}`
+                );
+              } else if (
+                code === 128
+              ) {
+                console.log(
+                  `[Download] ✓ Process ${pid} not found (already dead), exit code 128`
+                );
+              } else {
+                console.warn(
+                  `[Download] taskkill failed with code ${code} for PID ${pid}: ${killError.trim()}`
+                );
+              }
+              finish();
+            }
+          );
+
+          killer.on(
+            "error",
+            (err) => {
+              clearTimeout(timeoutTimer);
+              console.warn(
+                `[Download] taskkill error for PID ${pid}:`,
+                err
+              );
+              finish();
+            }
+          );
+        } catch (err) {
+          clearTimeout(timeoutTimer);
+          console.warn(
+            `[Download] Failed to spawn taskkill for PID ${pid}:`,
+            err
+          );
+          finish();
+        }
+      });
+    }
+  }
+
+  /**
+   * Stop active process, destroy streams, kill process tree, and cancel pending retry
+   */
+  private async stopActiveProcess(id: string): Promise<void> {
+    const retryTimer = this.retryTimeouts.get(id);
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      this.retryTimeouts.delete(id);
+    }
+
+    const activeDownload = this.activeDownloads.get(id);
+    if (activeDownload) {
+      console.log(
+        `[Download] ✓ Found active process for ${id}, marking as stopped...`
+      );
+
+      activeDownload.isStopped = true;
+
+      const proc = activeDownload.process;
+      if (proc) {
+        if (
+          proc.stdout &&
+          typeof proc.stdout.destroy === "function"
+        ) {
+          proc.stdout.destroy();
+          console.log(
+            `[Download] ✓ Closed stdout stream for ${id}`
+          );
+        }
+
+        if (
+          proc.stderr &&
+          typeof proc.stderr.destroy === "function"
+        ) {
+          proc.stderr.destroy();
+          console.log(
+            `[Download] ✓ Closed stderr stream for ${id}`
+          );
+        }
+
+        if (
+          proc.stdin &&
+          typeof proc.stdin.destroy === "function"
+        ) {
+          proc.stdin.destroy();
+          console.log(
+            `[Download] ✓ Closed stdin stream for ${id}`
+          );
+        }
+
+        await this.killProcessTree(proc);
       }
+
+      this.activeDownloads.delete(id);
+      this.nextProcessGeneration(id);
+      console.log(
+        `[Download] ✓ Process stopped and removed from activeDownloads for ${id}`
+      );
+    } else {
+      console.log(
+        `[Download] ℹ No active process found to stop for ${id}`
+      );
     }
   }
 
@@ -1182,6 +1266,12 @@ export class NativeDownloadService extends EventEmitter {
       `[Download] Starting yt-dlp with ${isResume ? "RESUME" : "FRESH"} (${args.length} args)`
     );
 
+    // Guard: Check if item was removed before spawn
+    if (!this.items.has(item.id)) {
+      console.log(`[Download] Item ${item.id} was removed before spawn; aborting.`);
+      return;
+    }
+
     const proc =
       this.executor.spawn(
         this.ytdlpPath,
@@ -1191,6 +1281,13 @@ export class NativeDownloadService extends EventEmitter {
           shell: false
         }
       );
+
+    // Guard: Check if item was removed right as process spawned
+    if (!this.items.has(item.id)) {
+      console.log(`[Download] Item ${item.id} was removed at spawn; killing process tree.`);
+      await this.killProcessTree(proc);
+      return;
+    }
 
     const generation =
       this.nextProcessGeneration(
@@ -1688,6 +1785,11 @@ export class NativeDownloadService extends EventEmitter {
       item
     );
 
+    this.emitStateChange(
+      item.id,
+      item.status
+    );
+
     return item;
   }
 
@@ -1791,79 +1893,7 @@ export class NativeDownloadService extends EventEmitter {
       `[Download] PAUSE requested for: ${id} (current status: ${item.status})`
     );
 
-    const activeDownload =
-      this.activeDownloads.get(id);
-
-    if (
-      activeDownload &&
-      activeDownload.process
-    ) {
-      console.log(
-        `[Download] ✓ Found active process for ${id}, marking as stopped...`
-      );
-
-      activeDownload.isStopped =
-        true;
-
-      const proc =
-        activeDownload.process;
-
-      if (
-        proc.stdout &&
-        typeof proc.stdout.destroy ===
-        "function"
-      ) {
-        proc.stdout.destroy();
-
-        console.log(
-          `[Download] ✓ Closed stdout stream for ${id}`
-        );
-      }
-
-      if (
-        proc.stderr &&
-        typeof proc.stderr.destroy ===
-        "function"
-      ) {
-        proc.stderr.destroy();
-
-        console.log(
-          `[Download] ✓ Closed stderr stream for ${id}`
-        );
-      }
-
-      if (
-        proc.stdin &&
-        typeof proc.stdin.destroy ===
-        "function"
-      ) {
-        proc.stdin.destroy();
-
-        console.log(
-          `[Download] ✓ Closed stdin stream for ${id}`
-        );
-      }
-
-      this.killProcessTree(
-        proc
-      );
-
-      this.activeDownloads.delete(
-        id
-      );
-
-      this.nextProcessGeneration(
-        id
-      );
-
-      console.log(
-        `[Download] ✓ Process killed for ${id}, incremented generation to prevent auto-restart`
-      );
-    } else {
-      console.log(
-        `[Download] ⚠ No active process found for ${id} (activeDownload exists: ${!!activeDownload}, has process: ${!!activeDownload?.process})`
-      );
-    }
+    await this.stopActiveProcess(id);
 
     const fileName =
       `${item.title.replace(
@@ -2177,79 +2207,7 @@ export class NativeDownloadService extends EventEmitter {
       `[Download] CANCEL requested for: ${id} (current status: ${item.status})`
     );
 
-    const activeDownload =
-      this.activeDownloads.get(id);
-
-    if (
-      activeDownload &&
-      activeDownload.process
-    ) {
-      console.log(
-        `[Download] ✓ Found active process for ${id}, marking as stopped...`
-      );
-
-      activeDownload.isStopped =
-        true;
-
-      const proc =
-        activeDownload.process;
-
-      if (
-        proc.stdout &&
-        typeof proc.stdout.destroy ===
-        "function"
-      ) {
-        proc.stdout.destroy();
-
-        console.log(
-          `[Download] ✓ Closed stdout stream for ${id}`
-        );
-      }
-
-      if (
-        proc.stderr &&
-        typeof proc.stderr.destroy ===
-        "function"
-      ) {
-        proc.stderr.destroy();
-
-        console.log(
-          `[Download] ✓ Closed stderr stream for ${id}`
-        );
-      }
-
-      if (
-        proc.stdin &&
-        typeof proc.stdin.destroy ===
-        "function"
-      ) {
-        proc.stdin.destroy();
-
-        console.log(
-          `[Download] ✓ Closed stdin stream for ${id}`
-        );
-      }
-
-      this.killProcessTree(
-        proc
-      );
-
-      this.activeDownloads.delete(
-        id
-      );
-
-      this.nextProcessGeneration(
-        id
-      );
-
-      console.log(
-        `[Download] ✓ Process killed for ${id}`
-      );
-    } else {
-      console.log(
-        `[Download] ⚠ No active process found for ${id}`
-      );
-    }
+    await this.stopActiveProcess(id);
 
     const fileName =
       `${item.title.replace(
@@ -2433,12 +2391,17 @@ export class NativeDownloadService extends EventEmitter {
       "retrying"
     );
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      this.retryTimeouts.delete(id);
+      if (!this.items.has(id)) {
+        return;
+      }
       void this.spawnDownload(
         resetItem,
         shouldResume
       );
     }, 0);
+    this.retryTimeouts.set(id, timer);
 
     return (
       this.items.get(id) ??
@@ -2452,29 +2415,32 @@ export class NativeDownloadService extends EventEmitter {
   async remove(
     id: string
   ): Promise<string> {
-    const activeDownload =
-      this.activeDownloads.get(id);
-
-    if (
-      activeDownload &&
-      activeDownload.process
-    ) {
-      activeDownload.process.kill();
-
-      this.activeDownloads.delete(
-        id
-      );
-
-      this.nextProcessGeneration(
-        id
-      );
-    }
+    await this.stopActiveProcess(id);
 
     this.items.delete(
       id
     );
 
     return id;
+  }
+
+  /**
+   * Clear all download items from queue and terminate any active processes
+   */
+  async clear(): Promise<void> {
+    const activeIds = Array.from(this.activeDownloads.keys());
+    for (const id of activeIds) {
+      await this.stopActiveProcess(id);
+    }
+
+    for (const timer of this.retryTimeouts.values()) {
+      clearTimeout(timer);
+    }
+    this.retryTimeouts.clear();
+
+    this.activeDownloads.clear();
+    this.processGenerations.clear();
+    this.items.clear();
   }
 
   /**
@@ -2522,6 +2488,11 @@ export class NativeDownloadService extends EventEmitter {
    * Called on app shutdown.
    */
   cleanup(): void {
+    for (const timer of this.retryTimeouts.values()) {
+      clearTimeout(timer);
+    }
+    this.retryTimeouts.clear();
+
     for (
       const [
         id,
@@ -2538,7 +2509,25 @@ export class NativeDownloadService extends EventEmitter {
       if (
         activeDownload.process
       ) {
-        activeDownload.process.kill();
+        if (
+          activeDownload.process.stdout &&
+          typeof activeDownload.process.stdout.destroy === "function"
+        ) {
+          activeDownload.process.stdout.destroy();
+        }
+        if (
+          activeDownload.process.stderr &&
+          typeof activeDownload.process.stderr.destroy === "function"
+        ) {
+          activeDownload.process.stderr.destroy();
+        }
+        if (
+          activeDownload.process.stdin &&
+          typeof activeDownload.process.stdin.destroy === "function"
+        ) {
+          activeDownload.process.stdin.destroy();
+        }
+        void this.killProcessTree(activeDownload.process);
       }
 
       const item =

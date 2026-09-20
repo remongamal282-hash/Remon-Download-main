@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, beforeEach } from "vitest";
 import { QueuePage } from "./QueuePage";
@@ -59,5 +59,42 @@ describe("QueuePage", () => {
     // After resume, status may be downloading or a subsequent state like merging
     const itemStatus = useQueueStore.getState().items.find((queueItem) => queueItem.id === item.id)?.status;
     expect(["downloading", "merging", "converting", "completed"].includes(itemStatus ?? "")).toBe(true);
+  });
+
+  it("immediately displays a newly added scheduled item without leaving the page", async () => {
+    render(<QueuePage />);
+    expect(screen.getByRole("heading", { name: "No downloads yet" })).toBeInTheDocument();
+
+    // Simulate item arriving in queueStore while on QueuePage
+    act(() => {
+      useQueueStore.setState((state) => ({
+        items: [
+          ...state.items,
+          {
+            id: "scheduled-to-queue-1",
+            metadataId: "meta-sched",
+            thumbnail: "https://example.com/sched-thumb.jpg",
+            title: "Scheduled Transferred Video",
+            sourceUrl: "https://example.com/watch?v=sched",
+            quality: "720p",
+            format: "mp4",
+            fileSize: 2048,
+            downloadedSize: 0,
+            speed: 0,
+            eta: "--",
+            progress: 0,
+            status: "queued",
+            order: 1,
+            addedAt: new Date().toISOString(),
+            phaseStartedAt: Date.now(),
+            lastUpdatedAt: Date.now(),
+            retryCount: 0
+          }
+        ]
+      }));
+    });
+
+    expect(await screen.findByText("Scheduled Transferred Video")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "No downloads yet" })).not.toBeInTheDocument();
   });
 });

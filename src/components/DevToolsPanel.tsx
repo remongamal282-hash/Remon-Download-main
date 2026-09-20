@@ -26,7 +26,7 @@ function createDevToolsVideo(index: number): VideoMetadata {
     channelName: "Prototype Lab",
     duration: "08:24",
     views: 42000 + index * 1000,
-    qualityOptions: ["2160p", "1440p", "1080p", "720p"],
+    qualityOptions: ["4320p", "2160p", "1440p", "1080p", "720p"],
     videoFormats: ["mp4", "webm", "mkv"],
     audioFormats: ["mp3", "opus"],
     resolution: "1080p",

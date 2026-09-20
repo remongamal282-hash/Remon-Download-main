@@ -55,6 +55,7 @@ export interface ElectronAPI {
     cancel(id: string): Promise<DownloadItem>;
     retry(id: string): Promise<DownloadItem>;
     remove(id: string): Promise<string>;
+    clear(): Promise<void>;
     reorder(orderedIds: string[]): Promise<DownloadItem[]>;
     openFolder(path: string): Promise<void>;
 
@@ -88,6 +89,7 @@ export interface ElectronAPI {
     getAll(): Promise<FavoriteItem[]>;
     add(item: FavoriteItem): Promise<FavoriteItem>;
     remove(id: string): Promise<string>;
+    clear(): Promise<void>;
   };
 
   scheduler: {
@@ -98,6 +100,7 @@ export interface ElectronAPI {
     update(schedule: ScheduledDownload): Promise<ScheduledDownload>;
     cancel(id: string): Promise<ScheduledDownload>;
     remove(id: string): Promise<string>;
+    clear(): Promise<void>;
     tick(now: number): Promise<{ items: ScheduledDownload[]; triggered: Array<{ schedule: ScheduledDownload; metadata: import("./download").VideoMetadata[] }> }>;
   };
 }

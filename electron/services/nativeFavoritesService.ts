@@ -114,4 +114,10 @@ export class NativeFavoritesService {
     await this.persist();
     return id;
   }
+
+  async clear(): Promise<void> {
+    await this.ensureInitialized();
+    this.items = [];
+    await this.persist();
+  }
 }

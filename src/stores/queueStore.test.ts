@@ -87,6 +87,57 @@ describe("useQueueStore", () => {
     expect(queueStore.getState().items[0]?.status).toBe("downloading");
   });
 
+  it("appends new items arriving via onItemUpdate when not yet in queueStore", async () => {
+    vi.resetModules();
+    const serviceResolver = await import("../services/serviceResolver");
+    let onItemUpdate: ((id: string, item: any) => void) | undefined;
+
+    serviceResolver._injectDownloadService({
+      createFromMetadata: vi.fn(),
+      createFromHistoryItem: vi.fn(),
+      createFromFavoriteItem: vi.fn(),
+      transition: vi.fn((item) => item),
+      retry: vi.fn((item) => item),
+      fail: vi.fn((item) => item),
+      tick: vi.fn((item) => item),
+      onItemUpdate: (callback: (id: string, item: any) => void) => {
+        onItemUpdate = callback;
+        return () => { onItemUpdate = undefined; };
+      }
+    } as any);
+
+    const queueStoreModule = await import("./queueStore");
+    const queueStore = queueStoreModule.useQueueStore;
+    queueStore.setState({ items: [] });
+
+    const externalItem = {
+      id: "scheduled-item-1",
+      metadataId: "meta-1",
+      thumbnail: "https://example.com/thumb.jpg",
+      title: "Scheduled Download",
+      sourceUrl: "https://example.com/watch?v=123",
+      quality: "1080p",
+      format: "mp4",
+      fileSize: 1048576,
+      downloadedSize: 0,
+      speed: 0,
+      eta: "--",
+      progress: 0,
+      status: "queued" as const,
+      order: 0,
+      addedAt: new Date().toISOString(),
+      phaseStartedAt: Date.now(),
+      lastUpdatedAt: Date.now(),
+      retryCount: 0
+    };
+
+    onItemUpdate?.(externalItem.id, externalItem);
+
+    expect(queueStore.getState().items).toHaveLength(1);
+    expect(queueStore.getState().items[0]?.id).toBe("scheduled-item-1");
+    expect(queueStore.getState().items[0]?.order).toBe(1);
+  });
+
   it("adds metadata to the queue without starting download", () => {
     const item = useQueueStore.getState().addFromMetadata(metadata, "1080p", "mp4");
     expect(item.status).toBe("queued");

@@ -56,11 +56,16 @@ export class ElectronDownloadService implements DownloadService {
   private stateChangeUnsubscribe: (() => void) | null = null;
   private updateCallbacks: Set<(id: string, item: DownloadItem) => void> = new Set();
   private pendingStarts: Set<string> = new Set();
+  private syncPromise: Promise<void> | null = null;
 
   constructor() {
     // Subscribe to IPC progress events
-    this.progressUnsubscribe = window.electronAPI!.download.onProgress((payload: DownloadProgressPayload) => {
-      const item = this.itemsCache.get(payload.id);
+    this.progressUnsubscribe = window.electronAPI!.download.onProgress(async (payload: DownloadProgressPayload) => {
+      let item = this.itemsCache.get(payload.id);
+      if (!item) {
+        await this.syncFromMain();
+        item = this.itemsCache.get(payload.id);
+      }
       if (!item) {
         return;
       }
@@ -86,8 +91,12 @@ export class ElectronDownloadService implements DownloadService {
     });
 
     // Subscribe to IPC state change events
-    this.stateChangeUnsubscribe = window.electronAPI!.download.onStateChange((payload: DownloadStateChangePayload) => {
-      const item = this.itemsCache.get(payload.id);
+    this.stateChangeUnsubscribe = window.electronAPI!.download.onStateChange(async (payload: DownloadStateChangePayload) => {
+      let item = this.itemsCache.get(payload.id);
+      if (!item) {
+        await this.syncFromMain();
+        item = this.itemsCache.get(payload.id);
+      }
       if (item) {
         // Main Process events are authoritative because background auto-start can
         // skip the renderer-only queued -> analyzing transition.
@@ -143,12 +152,26 @@ export class ElectronDownloadService implements DownloadService {
    * Sync items from Main Process to local cache
    */
   private async syncFromMain(): Promise<void> {
-    try {
-      const items = await window.electronAPI!.download.getAll();
-      items.forEach((item) => this.itemsCache.set(item.id, item));
-    } catch (err) {
-      console.error("[ElectronDownloadService] Failed to sync from Main:", err);
+    if (this.syncPromise) {
+      return this.syncPromise;
     }
+
+    this.syncPromise = (async () => {
+      try {
+        const items = await window.electronAPI!.download.getAll();
+        items.forEach((item) => {
+          if (!this.itemsCache.has(item.id)) {
+            this.itemsCache.set(item.id, item);
+          }
+        });
+      } catch (err) {
+        console.error("[ElectronDownloadService] Failed to sync from Main:", err);
+      } finally {
+        this.syncPromise = null;
+      }
+    })();
+
+    return this.syncPromise;
   }
 
   async getAll(): Promise<DownloadItem[]> {
@@ -206,6 +229,13 @@ export class ElectronDownloadService implements DownloadService {
   async remove(id: string): Promise<void> {
     await window.electronAPI!.download.remove(id);
     this.itemsCache.delete(id);
+  }
+
+  async clear(): Promise<void> {
+    if (window.electronAPI?.download?.clear) {
+      await window.electronAPI.download.clear();
+    }
+    this.itemsCache.clear();
   }
 
   createFromHistoryItem(item: HistoryItem, order: number): DownloadItem {
@@ -451,6 +481,10 @@ export class ElectronFavoritesService implements FavoritesService {
   }
 
   async clear(): Promise<void> {
+    if (window.electronAPI?.favorites?.clear) {
+      await window.electronAPI.favorites.clear();
+      return;
+    }
     const items = await this.getAll();
     await Promise.all(items.map((item) => this.remove(item.id)));
   }
@@ -518,6 +552,8 @@ export class ElectronSchedulerService implements SchedulerService {
       date: input.date,
       time: input.time,
       repeat: input.repeat,
+      quality: input.quality,
+      format: input.format,
       status: "scheduled" as const,
       nextRunAt: new Date(`${input.date}T${input.time}:00`).toISOString()
     };
@@ -537,6 +573,8 @@ export class ElectronSchedulerService implements SchedulerService {
       date: input.date,
       time: input.time,
       repeat: input.repeat,
+      quality: input.quality ?? item.quality,
+      format: input.format ?? item.format,
       status: "scheduled",
       nextRunAt: new Date(`${input.date}T${input.time}:00`).toISOString(),
       updatedAt: new Date().toISOString()
@@ -562,6 +600,10 @@ export class ElectronSchedulerService implements SchedulerService {
   }
 
   async clear(): Promise<void> {
+    if (window.electronAPI?.scheduler?.clear) {
+      await window.electronAPI.scheduler.clear();
+      return;
+    }
     const items = await this.getAll();
     await Promise.all(items.map((item) => this.remove(item.id)));
   }

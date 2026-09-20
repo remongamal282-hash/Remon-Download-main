@@ -14,10 +14,11 @@ import {
   verticalListSortingStrategy
 } from "@dnd-kit/sortable";
 import { AlertTriangle, FolderOpen, GripVertical, Pause, Play, RotateCcw, Trash2, XCircle } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 import { CONCURRENT_DOWNLOAD_OPTIONS, SPEED_LIMIT_OPTIONS } from "../constants/download";
 import { useDevToolsStore } from "../stores/devToolsStore";
 import { useQueueStore, getQueueSummary } from "../stores/queueStore";
@@ -47,9 +48,12 @@ export function QueuePage() {
   const tick = useQueueStore((state) => state.tick);
   const reorder = useQueueStore((state) => state.reorder);
   const lastError = useQueueStore((state) => state.lastError);
+  const clear = useQueueStore((state) => state.clear);
   const clearLastError = useQueueStore((state) => state.clearLastError);
   const settings = useSettingsStore((state) => state.settings);
   const updateSettings = useSettingsStore((state) => state.updateSettings);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const devSimulationSpeed = useDevToolsStore((state) => state.simulationSpeed);
   const simulationSpeed = import.meta.env.DEV ? devSimulationSpeed : 1;
   const summary = getQueueSummary(items);
@@ -88,6 +92,18 @@ export function QueuePage() {
     reorder(String(active.id), String(over.id));
   }
 
+  async function handleClearAll() {
+    setIsClearing(true);
+    try {
+      await clear();
+      setIsClearModalOpen(false);
+    } catch {
+      toast.error(t("errors.unknown"));
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
   return (
     <section className="space-y-5">
       <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
@@ -101,7 +117,7 @@ export function QueuePage() {
             })}
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-end gap-3 sm:gap-4">
           <label className="text-sm font-medium">
             <span className="mb-1 block text-slate-600 dark:text-slate-300">{t("queue.concurrent")}</span>
             <select
@@ -137,6 +153,16 @@ export function QueuePage() {
               ))}
             </select>
           </label>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsClearModalOpen(true)}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-3.5 text-sm font-medium text-red-600 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/70 transition"
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              <span>{t("queue.clearAll")}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -156,6 +182,15 @@ export function QueuePage() {
           </SortableContext>
         </DndContext>
       )}
+
+      <ConfirmationModal
+        isOpen={isClearModalOpen}
+        title={t("queue.clearAll")}
+        message={t("queue.clearAllConfirm")}
+        isLoading={isClearing}
+        onConfirm={handleClearAll}
+        onClose={() => setIsClearModalOpen(false)}
+      />
     </section>
   );
 }

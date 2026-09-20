@@ -13,7 +13,7 @@
  */
 import type { ScheduledDownload, ScheduleRepeat, ScheduledDownloadStatus, VideoMetadata } from '../../src/types/download';
 import { readJsonFile, writeJsonFile } from '../utils/fileStorage';
-import { isYouTubeUrl, NativeMetadataService } from './nativeMetadataService';
+import { isYouTubeUrl, NativeMetadataService, getSharedMetadataService } from './nativeMetadataService';
 
 interface SchedulerFileFormat {
   version: string;
@@ -76,6 +76,11 @@ export class NativeSchedulerService {
   private readonly FILE_VERSION = '1.0.0';
   private initializationPromise: Promise<void> | null = null;
   private nextError: Error | null = null;
+  private metadataService: NativeMetadataService;
+
+  constructor(metadataService?: NativeMetadataService) {
+    this.metadataService = metadataService ?? getSharedMetadataService();
+  }
 
   /**
    * Initialize service by loading scheduler from disk.
@@ -149,6 +154,13 @@ export class NativeSchedulerService {
     };
     this.items = [item, ...this.items];
     await this.persist();
+
+    if (isYouTubeUrl(item.sourceUrl)) {
+      // Non-blocking background cache pre-warm so when schedule triggers,
+      // metadata is already in memory and enters queue in 0ms without delay
+      void this.metadataService.analyze(item.sourceUrl).catch(() => {});
+    }
+
     return item;
   }
 
@@ -275,7 +287,7 @@ export class NativeSchedulerService {
     const fallbackTitle = `Scheduled Download ${triggerNumber}`;
 
     try {
-      const analyzed = await new NativeMetadataService().analyze(schedule.sourceUrl);
+      const analyzed = await this.metadataService.analyze(schedule.sourceUrl);
       if (analyzed.linkType === 'playlist') {
         return analyzed.videos.map((video, index) => ({
           ...video,
@@ -339,7 +351,7 @@ export class NativeSchedulerService {
       channelName: 'Scheduled Queue',
       duration: '10:24',
       views: 128000,
-      qualityOptions: ['2160p', '1440p', '1080p', '720p', '480p'],
+      qualityOptions: ['4320p', '2160p', '1440p', '1080p', '720p', '480p'],
       videoFormats: ['mp4', 'webm', 'mkv'],
       audioFormats: ['mp3', 'opus'],
       resolution: '1080p',

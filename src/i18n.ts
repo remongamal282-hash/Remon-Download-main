@@ -7,6 +7,13 @@ export const resources = {
       app: {
         name: "Remon Download"
       },
+      common: {
+        clearAll: "Clear All",
+        confirm: "Confirm",
+        cancel: "Cancel",
+        empty: "Nothing here yet.",
+        version: "Version"
+      },
       nav: {
         dashboard: "Dashboard",
         queue: "Download Queue",
@@ -40,6 +47,8 @@ export const resources = {
       queue: {
         title: "Download Queue",
         summary: "{{total}} total · {{active}} active · {{completed}} completed",
+        clearAll: "Clear All",
+        clearAllConfirm: "Are you sure you want to clear the download queue? Active downloads will be stopped.",
         concurrent: "Concurrent downloads",
         speedLimit: "Speed limit",
         emptyTitle: "No downloads yet",
@@ -92,6 +101,8 @@ export const resources = {
         title: "History",
         summary: "{{count}} history item",
         summary_plural: "{{count}} history items",
+        clearAll: "Clear All",
+        clearAllConfirm: "Are you sure you want to clear the entire download history?",
         loading: "Loading history",
         emptyTitle: "No history yet",
         emptyDescription: "Completed, failed, and canceled downloads will appear here.",
@@ -123,6 +134,8 @@ export const resources = {
         title: "Favorites",
         summary: "{{count}} favorite",
         summary_plural: "{{count}} favorites",
+        clearAll: "Clear All",
+        clearAllConfirm: "Are you sure you want to clear all favorites?",
         loading: "Loading favorites",
         emptyTitle: "No favorites yet",
         emptyDescription: "Favorite videos will appear here for quick downloading.",
@@ -140,6 +153,8 @@ export const resources = {
         title: "Scheduler",
         summary: "{{count}} scheduled download",
         summary_plural: "{{count}} scheduled downloads",
+        clearAll: "Clear All",
+        clearAllConfirm: "Are you sure you want to clear all scheduled items?",
         loading: "Loading scheduled downloads",
         emptyTitle: "No scheduled downloads",
         emptyDescription: "Create a schedule to add a YouTube link to the queue when its time arrives.",
@@ -237,22 +252,21 @@ export const resources = {
       },
       errors: {
         unsupportedUrl: "This URL is valid but unsupported. Use a YouTube link.",
-        networkError: "Mock network error.",
-        videoUnavailable: "Mock video unavailable error.",
-        diskFull: "Mock disk full error.",
-        permissionDenied: "Mock permission denied error.",
-        ytdlpError: "Mock yt-dlp error.",
-        ffmpegError: "Mock FFmpeg error.",
+        networkError: "Network connection error. Please check your internet connection.",
+        videoUnavailable: "This video is unavailable or has been removed.",
+        videoPrivate: "This video is private and cannot be accessed.",
+        timeout: "Analyzing the URL took longer than expected. Please try again.",
+        diskFull: "Disk is full.",
+        permissionDenied: "Permission denied.",
+        ytdlpError: "Failed to extract metadata via yt-dlp.",
+        ffmpegError: "FFmpeg error.",
         unknown: "Something went wrong while analyzing the link."
       },
       toast: {
         addedToQueue: "Added to queue.",
         addedManyToQueue: "Added {{count}} items to queue."
       },
-      common: {
-        empty: "Nothing here yet.",
-        version: "Version"
-      },
+
       about: {
         description: "A desktop-style manager for organizing video and media downloads.",
         developerTitle: "About the developer",
@@ -306,6 +320,13 @@ export const resources = {
       app: {
         name: "Remon Download"
       },
+      common: {
+        clearAll: "مسح الكل",
+        confirm: "تأكيد",
+        cancel: "إلغاء",
+        empty: "لا يوجد شيء هنا بعد.",
+        version: "الإصدار"
+      },
       nav: {
         dashboard: "لوحة التحكم",
         queue: "قائمة التنزيل",
@@ -339,6 +360,8 @@ export const resources = {
       queue: {
         title: "قائمة التنزيل",
         summary: "{{total}} إجمالي · {{active}} نشط · {{completed}} مكتمل",
+        clearAll: "مسح الكل",
+        clearAllConfirm: "هل أنت متأكد أنك تريد مسح قائمة التنزيل؟ سيتم إيقاف التنزيلات النشطة.",
         concurrent: "التنزيلات المتزامنة",
         speedLimit: "حد السرعة",
         emptyTitle: "لا توجد تنزيلات بعد",
@@ -391,6 +414,8 @@ export const resources = {
         title: "السجل",
         summary: "عنصر سجل واحد",
         summary_plural: "{{count}} عناصر في السجل",
+        clearAll: "مسح الكل",
+        clearAllConfirm: "هل أنت متأكد أنك تريد مسح سجل التنزيل بالكامل؟",
         loading: "جار تحميل السجل",
         emptyTitle: "لا يوجد سجل بعد",
         emptyDescription: "ستظهر هنا التنزيلات المكتملة والفاشلة والملغية.",
@@ -422,6 +447,8 @@ export const resources = {
         title: "المفضلة",
         summary: "عنصر مفضل واحد",
         summary_plural: "{{count}} عناصر مفضلة",
+        clearAll: "مسح الكل",
+        clearAllConfirm: "هل أنت متأكد أنك تريد مسح جميع المفضلة؟",
         loading: "جار تحميل المفضلة",
         emptyTitle: "لا توجد مفضلة بعد",
         emptyDescription: "ستظهر هنا الفيديوهات المفضلة لتنزيلها بسرعة.",
@@ -439,6 +466,8 @@ export const resources = {
         title: "المجدول",
         summary: "تنزيل مجدول واحد",
         summary_plural: "{{count}} تنزيلات مجدولة",
+        clearAll: "مسح الكل",
+        clearAllConfirm: "هل أنت متأكد أنك تريد إلغاء جميع العناصر المجدولة؟",
         loading: "جار تحميل التنزيلات المجدولة",
         emptyTitle: "لا توجد تنزيلات مجدولة",
         emptyDescription: "أنشئ موعدًا لإضافة رابط YouTube إلى القائمة عند حلول وقته.",
@@ -534,11 +563,13 @@ export const resources = {
       },
       errors: {
         unsupportedUrl: "الرابط صحيح لكنه غير مدعوم. استخدم رابط YouTube.",
-        networkError: "خطأ شبكة تجريبي.",
-        videoUnavailable: "الفيديو غير متاح تجريبيًا.",
+        networkError: "تعذر الاتصال بالشبكة. يرجى التحقق من اتصال الإنترنت.",
+        videoUnavailable: "هذا الفيديو غير متاح أو تم حذفه.",
+        videoPrivate: "هذا الفيديو خاص ولا يمكن الوصول إليه.",
+        timeout: "استغرق تحليل الرابط وقتًا أطول من المتوقع. يرجى المحاولة مرة أخرى.",
         diskFull: "القرص ممتلئ تجريبيًا.",
         permissionDenied: "رفض صلاحيات تجريبي.",
-        ytdlpError: "خطأ yt-dlp تجريبي.",
+        ytdlpError: "تعذر تحليل بيانات الفيديو عبر yt-dlp.",
         ffmpegError: "خطأ FFmpeg تجريبي.",
         unknown: "حدث خطأ أثناء تحليل الرابط."
       },
@@ -546,10 +577,7 @@ export const resources = {
         addedToQueue: "تمت الإضافة للقائمة.",
         addedManyToQueue: "تمت إضافة {{count}} عناصر للقائمة."
       },
-      common: {
-        empty: "لا يوجد شيء هنا بعد.",
-        version: "الإصدار"
-      },
+
       about: {
         description: "مدير بأسلوب تطبيق سطح مكتب لتنظيم تنزيلات الفيديو والوسائط.",
         developerTitle: "عن المطور",

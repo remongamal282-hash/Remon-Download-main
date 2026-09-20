@@ -8,6 +8,7 @@ export type AppErrorCode =
   | "ytdlp_error"
   | "ytdlp_not_found"
   | "ffmpeg_error"
+  | "timeout"
   | "unknown";
 
 export interface ErrorModel {

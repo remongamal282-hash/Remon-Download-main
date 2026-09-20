@@ -1,8 +1,8 @@
 import { app, ipcMain, BrowserWindow, dialog, shell } from "electron";
 import { IPC_CHANNELS, IPC_EVENTS, type IpcResult, type DownloadProgressPayload, type DownloadStateChangePayload } from "./channels";
-import { NativeMetadataService } from "../services/nativeMetadataService";
+import { NativeMetadataService, getSharedMetadataService } from "../services/nativeMetadataService";
 import { NativeDownloadService } from "../services/nativeDownloadService";
-import { NativeSettingsService } from "../services/nativeSettingsService";
+import { NativeSettingsService, getSharedSettingsService } from "../services/nativeSettingsService";
 import { NativeSchedulerService } from "../services/nativeSchedulerService";
 import { NativeHistoryService } from "../services/nativeHistoryService";
 import { NativeFavoritesService } from "../services/nativeFavoritesService";
@@ -12,6 +12,8 @@ import type { ErrorModel } from "../../src/types/errors";
 
 interface RegisterIpcHandlersOptions {
   schedulerService?: NativeSchedulerService;
+  metadataService?: NativeMetadataService;
+  settingsService?: NativeSettingsService;
   onDownloadServiceReady?: (service: NativeDownloadService) => void;
   onNotificationServiceReady?: (service: NativeNotificationService) => void;
   onMinimizeToTrayChanged?: (enabled: boolean, window: BrowserWindow) => void;
@@ -33,10 +35,11 @@ function wrapError<T>(err: unknown): IpcResult<T> {
 }
 
 export function registerIpcHandlers(options: RegisterIpcHandlersOptions = {}): void {
-  const settingsService = new NativeSettingsService();
+  const settingsService = options.settingsService ?? getSharedSettingsService();
   const historyService = new NativeHistoryService();
   const favoritesService = new NativeFavoritesService();
   const schedulerService = options.schedulerService ?? new NativeSchedulerService();
+  const metadataService = options.metadataService ?? getSharedMetadataService();
   let notificationService: NativeNotificationService | null = null;
 
   // Initialize services with persistent storage
@@ -191,12 +194,12 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions = {}): v
     return downloadService;
   };
 
-  // Metadata - creates new instance per request to use latest settings
+  // Metadata - reuses metadataService instance with shared cache & in-flight deduplication
   ipcMain.handle(IPC_CHANNELS.METADATA_ANALYZE, async (_, { url }) => {
     try {
       console.log(`[IPC] METADATA_ANALYZE requested for URL: ${url}`);
       const settings = await settingsService.get();
-      const metadataService = new NativeMetadataService(settings.ytdlpPath);
+      metadataService.updateSettingsYtdlpPath(settings.ytdlpPath);
       const data = await metadataService.analyze(url);
       console.log(`[IPC] METADATA_ANALYZE succeeded for URL: ${url}`);
       return wrapSuccess(data);
@@ -285,6 +288,17 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions = {}): v
       const data = await service.remove(id);
       downloadItems.delete(id);
       return wrapSuccess(data);
+    } catch (err) {
+      return wrapError(err);
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.DOWNLOAD_CLEAR, async () => {
+    try {
+      const service = await ensureDownloadService();
+      await service.clear();
+      downloadItems.clear();
+      return wrapSuccess(undefined);
     } catch (err) {
       return wrapError(err);
     }
@@ -486,6 +500,15 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions = {}): v
     }
   });
 
+  ipcMain.handle(IPC_CHANNELS.FAVORITES_CLEAR, async () => {
+    try {
+      await favoritesService.clear();
+      return wrapSuccess(undefined);
+    } catch (err) {
+      return wrapError(err);
+    }
+  });
+
   // Scheduler
   ipcMain.handle(IPC_CHANNELS.SCHEDULER_GET_ALL, async () => {
     try {
@@ -527,6 +550,15 @@ export function registerIpcHandlers(options: RegisterIpcHandlersOptions = {}): v
     try {
       const data = await schedulerService.remove(id);
       return wrapSuccess(data);
+    } catch (err) {
+      return wrapError(err);
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SCHEDULER_CLEAR, async () => {
+    try {
+      await schedulerService.clear();
+      return wrapSuccess(undefined);
     } catch (err) {
       return wrapError(err);
     }

@@ -65,10 +65,15 @@ export function DashboardPage() {
 
   const watchedUrl = watch("url");
   const lastAutoAnalyzedUrlRef = useRef<string | null>(null);
+  const autoAnalyzeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const nextUrl = watchedUrl?.trim() ?? "";
     if (!nextUrl) {
+      if (autoAnalyzeTimerRef.current) {
+        window.clearTimeout(autoAnalyzeTimerRef.current);
+        autoAnalyzeTimerRef.current = null;
+      }
       return;
     }
 
@@ -81,12 +86,22 @@ export function DashboardPage() {
       return;
     }
 
-    const timer = window.setTimeout(() => {
+    if (autoAnalyzeTimerRef.current) {
+      window.clearTimeout(autoAnalyzeTimerRef.current);
+    }
+
+    autoAnalyzeTimerRef.current = window.setTimeout(() => {
       lastAutoAnalyzedUrlRef.current = nextUrl;
+      autoAnalyzeTimerRef.current = null;
       void onSubmit({ url: nextUrl });
     }, 250);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      if (autoAnalyzeTimerRef.current) {
+        window.clearTimeout(autoAnalyzeTimerRef.current);
+        autoAnalyzeTimerRef.current = null;
+      }
+    };
   }, [watchedUrl]);
 
   const selectableVideos = useMemo(() => {
@@ -106,7 +121,13 @@ export function DashboardPage() {
   }, [result]);
 
   async function onSubmit(values: QuickAddFormValues) {
-    const analyzed = await analyze(values.url);
+    if (autoAnalyzeTimerRef.current) {
+      window.clearTimeout(autoAnalyzeTimerRef.current);
+      autoAnalyzeTimerRef.current = null;
+    }
+    const cleanUrl = values.url?.trim() ?? "";
+    lastAutoAnalyzedUrlRef.current = cleanUrl;
+    const analyzed = await analyze(cleanUrl);
     if (analyzed?.linkType === "playlist") {
       setSelectedIds(analyzed.videos.map((video) => video.id));
     } else if (analyzed?.linkType === "channel") {

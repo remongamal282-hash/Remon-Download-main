@@ -128,6 +128,8 @@ export interface ScheduledDownload {
   createdAt: string;
   updatedAt: string;
   triggerCount: number;
+  quality?: string;
+  format?: string;
   lastTriggeredAt?: string;
   errorMessage?: string;
 }

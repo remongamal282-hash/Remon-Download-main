@@ -1,6 +1,7 @@
 import { FolderOpen, RotateCcw, Star, Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useHistoryStore } from "../stores/historyStore";
@@ -22,7 +23,10 @@ export function HistoryPage() {
   const isLoading = useHistoryStore((state) => state.isLoading);
   const error = useHistoryStore((state) => state.error);
   const load = useHistoryStore((state) => state.load);
+  const clear = useHistoryStore((state) => state.clear);
   const clearError = useHistoryStore((state) => state.clearError);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     void load();
@@ -35,13 +39,37 @@ export function HistoryPage() {
     }
   }, [clearError, error, t]);
 
+  async function handleClearAll() {
+    setIsClearing(true);
+    try {
+      await clear();
+      setIsClearModalOpen(false);
+    } catch {
+      toast.error(t("errors.unknown"));
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
   return (
     <section className="space-y-5">
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h1 className="text-2xl font-semibold">{t("history.title")}</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          {t("history.summary", { count: items.length })}
-        </p>
+      <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">{t("history.title")}</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            {t("history.summary", { count: items.length })}
+          </p>
+        </div>
+        {items.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setIsClearModalOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-600 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/70 transition self-start sm:self-auto"
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            <span>{t("history.clearAll")}</span>
+          </button>
+        )}
       </div>
 
       {isLoading ? <HistorySkeleton /> : null}
@@ -60,6 +88,15 @@ export function HistoryPage() {
           ))}
         </div>
       ) : null}
+
+      <ConfirmationModal
+        isOpen={isClearModalOpen}
+        title={t("history.clearAll")}
+        message={t("history.clearAllConfirm")}
+        isLoading={isClearing}
+        onConfirm={handleClearAll}
+        onClose={() => setIsClearModalOpen(false)}
+      />
     </section>
   );
 }

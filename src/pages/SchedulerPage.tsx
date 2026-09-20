@@ -1,6 +1,7 @@
 import { AlertCircle, CalendarClock, CheckCircle2, Download, Plus, Trash2, XCircle } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -61,8 +62,11 @@ export function SchedulerPage() {
   const load = useSchedulerStore((state) => state.load);
   const create = useSchedulerStore((state) => state.create);
   const tick = useSchedulerStore((state) => state.tick);
+  const clear = useSchedulerStore((state) => state.clear);
   const clearError = useSchedulerStore((state) => state.clearError);
   const settings = useSettingsStore((state) => state.settings);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const addFromMetadata = useQueueStore((state) => state.addFromMetadata);
 
   const {
@@ -86,6 +90,10 @@ export function SchedulerPage() {
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (items.length === 0) {
+      return;
+    }
+
     intervalRef.current = window.setInterval(() => {
       void load();
     }, 1000);
@@ -96,7 +104,7 @@ export function SchedulerPage() {
         intervalRef.current = null;
       }
     };
-  }, [load]);
+  }, [items.length, load]);
 
   useEffect(() => {
     if (error) {
@@ -126,7 +134,9 @@ export function SchedulerPage() {
       sourceUrl: values.url,
       date: values.date,
       time: values.time,
-      repeat: values.repeat
+      repeat: values.repeat,
+      quality: settings.defaultQuality,
+      format: settings.defaultVideoFormat
     });
 
     if (item) {
@@ -142,13 +152,37 @@ export function SchedulerPage() {
     }
   }
 
+  async function handleClearAll() {
+    setIsClearing(true);
+    try {
+      await clear();
+      setIsClearModalOpen(false);
+    } catch {
+      toast.error(t("errors.unknown"));
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
   return (
     <section className="space-y-5">
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h1 className="text-2xl font-semibold">{t("scheduler.title")}</h1>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-          {t("scheduler.summary", { count: items.length })}
-        </p>
+      <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">{t("scheduler.title")}</h1>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            {t("scheduler.summary", { count: items.length })}
+          </p>
+        </div>
+        {items.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setIsClearModalOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-600 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/70 transition self-start sm:self-auto"
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            <span>{t("scheduler.clearAll")}</span>
+          </button>
+        )}
       </div>
 
       <form
@@ -231,6 +265,15 @@ export function SchedulerPage() {
           ))}
         </div>
       ) : null}
+
+      <ConfirmationModal
+        isOpen={isClearModalOpen}
+        title={t("scheduler.clearAll")}
+        message={t("scheduler.clearAllConfirm")}
+        isLoading={isClearing}
+        onConfirm={handleClearAll}
+        onClose={() => setIsClearModalOpen(false)}
+      />
     </section>
   );
 }

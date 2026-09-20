@@ -12,6 +12,7 @@ export const IPC_CHANNELS = {
   DOWNLOAD_CANCEL: "download:cancel",
   DOWNLOAD_RETRY: "download:retry",
   DOWNLOAD_REMOVE: "download:remove",
+  DOWNLOAD_CLEAR: "download:clear",
   DOWNLOAD_REORDER: "download:reorder",
   SETTINGS_GET: "settings:get",
   SETTINGS_UPDATE: "settings:update",
@@ -27,11 +28,13 @@ export const IPC_CHANNELS = {
   FAVORITES_GET_ALL: "favorites:get-all",
   FAVORITES_ADD: "favorites:add",
   FAVORITES_REMOVE: "favorites:remove",
+  FAVORITES_CLEAR: "favorites:clear",
   SCHEDULER_GET_ALL: "scheduler:get-all",
   SCHEDULER_CREATE: "scheduler:create",
   SCHEDULER_UPDATE: "scheduler:update",
   SCHEDULER_CANCEL: "scheduler:cancel",
   SCHEDULER_REMOVE: "scheduler:remove",
+  SCHEDULER_CLEAR: "scheduler:clear",
   SCHEDULER_TICK: "scheduler:tick"
 } as const;
 
@@ -62,6 +65,7 @@ export interface IpcContractPayloads {
   [IPC_CHANNELS.DOWNLOAD_CANCEL]: { id: string };
   [IPC_CHANNELS.DOWNLOAD_RETRY]: { id: string };
   [IPC_CHANNELS.DOWNLOAD_REMOVE]: { id: string };
+  [IPC_CHANNELS.DOWNLOAD_CLEAR]: void;
   [IPC_CHANNELS.DOWNLOAD_REORDER]: { orderedIds: string[] };
   [IPC_CHANNELS.SETTINGS_GET]: void;
   [IPC_CHANNELS.SETTINGS_UPDATE]: { settings: Partial<AppSettings> };
@@ -77,11 +81,13 @@ export interface IpcContractPayloads {
   [IPC_CHANNELS.FAVORITES_GET_ALL]: void;
   [IPC_CHANNELS.FAVORITES_ADD]: { item: FavoriteItem };
   [IPC_CHANNELS.FAVORITES_REMOVE]: { id: string };
+  [IPC_CHANNELS.FAVORITES_CLEAR]: void;
   [IPC_CHANNELS.SCHEDULER_GET_ALL]: void;
   [IPC_CHANNELS.SCHEDULER_CREATE]: { schedule: Omit<ScheduledDownload, "id" | "createdAt" | "updatedAt" | "triggerCount"> };
   [IPC_CHANNELS.SCHEDULER_UPDATE]: { schedule: ScheduledDownload };
   [IPC_CHANNELS.SCHEDULER_CANCEL]: { id: string };
   [IPC_CHANNELS.SCHEDULER_REMOVE]: { id: string };
+  [IPC_CHANNELS.SCHEDULER_CLEAR]: void;
   [IPC_CHANNELS.SCHEDULER_TICK]: { now: number };
 }
 
@@ -95,6 +101,7 @@ export interface IpcContractResponses {
   [IPC_CHANNELS.DOWNLOAD_CANCEL]: DownloadItem;
   [IPC_CHANNELS.DOWNLOAD_RETRY]: DownloadItem;
   [IPC_CHANNELS.DOWNLOAD_REMOVE]: string;
+  [IPC_CHANNELS.DOWNLOAD_CLEAR]: void;
   [IPC_CHANNELS.DOWNLOAD_REORDER]: DownloadItem[];
   [IPC_CHANNELS.SETTINGS_GET]: AppSettings;
   [IPC_CHANNELS.SETTINGS_UPDATE]: AppSettings;
@@ -110,11 +117,13 @@ export interface IpcContractResponses {
   [IPC_CHANNELS.FAVORITES_GET_ALL]: FavoriteItem[];
   [IPC_CHANNELS.FAVORITES_ADD]: FavoriteItem;
   [IPC_CHANNELS.FAVORITES_REMOVE]: string;
+  [IPC_CHANNELS.FAVORITES_CLEAR]: void;
   [IPC_CHANNELS.SCHEDULER_GET_ALL]: ScheduledDownload[];
   [IPC_CHANNELS.SCHEDULER_CREATE]: ScheduledDownload;
   [IPC_CHANNELS.SCHEDULER_UPDATE]: ScheduledDownload;
   [IPC_CHANNELS.SCHEDULER_CANCEL]: ScheduledDownload;
   [IPC_CHANNELS.SCHEDULER_REMOVE]: string;
+  [IPC_CHANNELS.SCHEDULER_CLEAR]: void;
   [IPC_CHANNELS.SCHEDULER_TICK]: { items: ScheduledDownload[]; triggered: Array<{ schedule: ScheduledDownload; metadata: import("../../src/types/download").VideoMetadata[] }> };
 }
 

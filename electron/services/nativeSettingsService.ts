@@ -118,3 +118,13 @@ export class NativeSettingsService {
     return { ...this.settings };
   }
 }
+
+let sharedSettingsService: NativeSettingsService | null = null;
+
+export function getSharedSettingsService(): NativeSettingsService {
+  if (!sharedSettingsService) {
+    sharedSettingsService = new NativeSettingsService();
+  }
+  return sharedSettingsService;
+}
+

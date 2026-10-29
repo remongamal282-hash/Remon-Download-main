@@ -585,6 +585,7 @@ export class NativeMetadataService {
     return new Promise((resolve, reject) => {
       const args = [
         "--dump-single-json",
+        "--no-check-formats",
         isPlaylist ? "--yes-playlist" : "--no-playlist",
         ...(isPlaylist ? ["--flat-playlist"] : []),
         ...(extractorArg ? ["--extractor-args", extractorArg] : []),

@@ -296,9 +296,9 @@ describe("NativeMetadataService — yt-dlp Integration", () => {
       const service = new NativeMetadataService("/invalid/path", mockExecutor);
       await service.analyze("https://www.youtube.com/watch?v=test");
 
-      expect(mockExecutor.spawnCalls[0]?.command).toBe("yt-dlp");
+      expect(mockExecutor.spawnCalls[0]?.command).toMatch(/^yt-dlp(\.exe)?$/);
       expect(mockExecutor.spawnCalls[0]?.args[0]).toBe("--version");
-      expect(mockExecutor.spawnCalls[1]?.command).toBe("yt-dlp");
+      expect(mockExecutor.spawnCalls[1]?.command).toMatch(/^yt-dlp(\.exe)?$/);
       expect(mockExecutor.spawnCalls[1]?.args).toContain("--dump-single-json");
     });
 
@@ -342,6 +342,17 @@ describe("NativeMetadataService — yt-dlp Integration", () => {
         resolution: "720p",
         fps: 30
       });
+    });
+
+    it("includes --no-check-formats in yt-dlp arguments to prevent format probing delay", async () => {
+      const service = new NativeMetadataService(undefined, mockExecutor);
+      await service.analyze("https://www.youtube.com/watch?v=test");
+
+      const metadataCall = mockExecutor.spawnCalls.find((call) =>
+        call.args.includes("--dump-single-json")
+      );
+
+      expect(metadataCall?.args).toContain("--no-check-formats");
     });
 
     it("passes URL as separate argument (security)", async () => {
